@@ -809,5 +809,112 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertIn(b"1", response.data)
 
 
+    def test_recommendations_explains_empty_and_missing_sales_history(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Rice Crackers")
+
+        response = self.client.get("/recommendations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Restock recommendations", response.data)
+        self.assertIn(b"Rice Crackers", response.data)
+        self.assertIn(b"No sales history", response.data)
+        self.assertIn(b"Estimate withheld", response.data)
+        self.assertIn(b"data-testid=\"restock-history-count\">1", response.data)
+        self.assertNotIn(b"data-testid=\"restock-product-count\">1", response.data)
+
+    def test_recommendations_calculate_restock_from_sales_and_sellable_stock(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(
+            name="Bottled Tea",
+            tracks_expiry="0",
+            lead_time_days="5",
+            safety_stock="3",
+        )
+        today = date.today()
+        first_sale = today - timedelta(days=14)
+        self._receive_batch_via_form(
+            product_id,
+            received_date=first_sale.isoformat(),
+            expiry_date="",
+            quantity="20",
+        )
+
+        for sale_day in (first_sale, today - timedelta(days=7), today):
+            response = self._post_with_csrf(
+                "/sales/new",
+                "/sales/new",
+                self._sale_form_values(
+                    product_id,
+                    business_date=sale_day.isoformat(),
+                    quantity="6",
+                ),
+                follow_redirects=True,
+            )
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/recommendations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Bottled Tea", response.data)
+        self.assertIn(b"18 piece", response.data)
+        self.assertIn(b"1.2 piece/day", response.data)
+        self.assertIn(b"15 observed calendar day(s)", response.data)
+        self.assertIn(b"9 piece", response.data)
+        self.assertIn(b"7", response.data)
+        self.assertIn(b"Restock suggested", response.data)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            remaining = connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(remaining, 2)
+
+    def test_recommendations_withhold_estimate_for_less_than_seven_days(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(
+            name="New Snack",
+            tracks_expiry="0",
+            lead_time_days="4",
+            safety_stock="2",
+        )
+        today = date.today()
+        self._receive_batch_via_form(
+            product_id,
+            received_date=(today - timedelta(days=1)).isoformat(),
+            expiry_date="",
+            quantity="8",
+        )
+        response = self._post_with_csrf(
+            "/sales/new",
+            "/sales/new",
+            self._sale_form_values(
+                product_id,
+                business_date=today.isoformat(),
+                quantity="1",
+            ),
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.get("/recommendations")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"New Snack", response.data)
+        self.assertIn(b"Building history", response.data)
+        self.assertIn(b"Only 1 calendar day(s)", response.data)
+        self.assertIn(b"At least 7 days are required", response.data)
+        self.assertIn(b"Estimate withheld", response.data)
+        self.assertNotIn(b"data-testid=\"restock-product-count\">1", response.data)
+
+
 if __name__ == "__main__":
     unittest.main()
