@@ -307,7 +307,10 @@ class WarungWiseAppTests(unittest.TestCase):
         product_id = self._create_product()
         self._add_receipt_batch(product_id)
         response = self._post_with_csrf(
-            "/products", f"/products/{product_id}/archive", {}, follow_redirects=True
+            f"/products/{product_id}/edit",
+            f"/products/{product_id}/archive",
+            {},
+            follow_redirects=True,
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"cannot be archived while stock remains", response.data)
