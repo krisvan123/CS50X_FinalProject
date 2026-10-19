@@ -1,6 +1,6 @@
 # Phase 8 — Dashboard and Expiry Alerts
 
-**Status:** Implemented; automated verification is pending the latest CI run.  
+**Status:** Implemented and verified by the [GitHub Actions test workflow](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39208159151) on Python 3.12.  
 **Scope:** Dashboard summaries, low-stock watchlist, batch-level expiry watchlist, and visible interaction polish.
 
 ## What changed
@@ -29,7 +29,7 @@ Run the test suite from the repository root:
 python -m unittest discover -s tests -v
 ```
 
-Also open the dashboard at desktop and mobile widths, verify the watchlists with empty and populated databases, and confirm animation respects the operating system's reduced-motion preference. This document should be updated with the observed CI result after the workflow completes.
+Also open the dashboard at desktop and mobile widths, verify the watchlists with empty and populated databases, and confirm animation respects the operating system's reduced-motion preference. The dashboard-watchlist implementation and its automated test completed successfully in GitHub Actions. Re-run the suite after any later code changes.
 
 ## AI assistance note
 
