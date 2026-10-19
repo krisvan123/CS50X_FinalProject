@@ -38,6 +38,48 @@ class WarungWiseAppTests(unittest.TestCase):
         self.temp_directory.cleanup()
 
 
+    def test_stock_action_and_settings_reject_missing_csrf_token(self) -> None:
+        from datetime import date
+
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute(
+                "SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+
+        stock_response = self.client.post("/stock-actions/new", data={
+            "batch_id": str(batch_id),
+            "operation_type": "disposal",
+            "business_date": date.today().isoformat(),
+            "quantity": "1",
+            "reason": "CSRF validation test",
+            "note": "",
+        })
+        settings_response = self.client.post(
+            "/settings", data={"expiry_warning_days": "7"}
+        )
+        self.assertEqual(stock_response.status_code, 400)
+        self.assertEqual(settings_response.status_code, 400)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE id = ?",
+                (batch_id,),
+            ).fetchone()[0], 5)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_operations WHERE operation_type = 'disposal'"
+            ).fetchone()[0], 0)
+            self.assertEqual(connection.execute(
+                "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+            ).fetchone()[0], 30)
+        finally:
+            connection.close()
+
     def test_browser_security_headers_and_dynamic_no_store_policy(self) -> None:
         initialize_database(database_path=self.database_path)
         response = self.client.get("/")
