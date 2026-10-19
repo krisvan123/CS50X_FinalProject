@@ -9,7 +9,7 @@
     </div>
     <div class="dashboard-actions">
         <a class="button button-primary" href="{{ url_for('new_product') }}">+ Add product</a>
-        <a class="button button-secondary" href="{{ url_for('products') }}">Manage products</a>
+        <a class="button button-secondary" href="{{ url_for('new_sale') }}">Record a sale</a>
         <div class="date-chip">
         <span class="date-chip-label">BUSINESS DATE</span>
         <strong>{{ stats.business_date }}</strong>
@@ -21,7 +21,7 @@
     <div class="welcome-icon" aria-hidden="true">✓</div>
     <div>
         <strong>Your local database is connected</strong>
-        <p>Dashboard figures are calculated from saved records. Product management and batch-based stock receipts are available; sales and stock adjustments are planned for a later milestone.</p>
+        <p>Dashboard figures are calculated from saved records. Product management, batch-based stock receipts, and FEFO sales are available; manual stock adjustments are planned for a later milestone.</p>
     </div>
     <span class="status-pill"><span aria-hidden="true"></span> Database ready</span>
 </section>
@@ -126,7 +126,7 @@
         <div class="empty-state" data-testid="empty-movements">
             <span class="empty-state-icon" aria-hidden="true">↔</span>
             <strong>No stock movements yet</strong>
-            <p>Stock receipts now appear here as soon as a batch is recorded. Sales and adjustments will appear when those workflows are added.</p>
+            <p>Receipts and sales are logged here with batch-level quantity changes. Manual stock adjustments will be added in a later milestone.</p>
         </div>
         {% endif %}
     </article>
