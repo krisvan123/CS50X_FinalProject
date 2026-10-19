@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading recommendation-heading">
+    <div>
+        <p class="eyebrow">INVENTORY INTELLIGENCE / PLANNING</p>
+        <h1>Restock recommendations</h1>
+        <p class="page-subtitle">Use recorded demand and current sellable stock to estimate what may need replenishing. Every calculation is visible and rule-based.</p>
+    </div>
+    <div class="recommendation-period-chip">
+        <span>SALES OBSERVATION WINDOW</span>
+        <strong>{{ period_start }} — {{ period_end }}</strong>
+        <small>{{ lookback_days }} calendar days maximum</small>
+    </div>
+</section>
+
+<section class="recommendation-summary-grid" aria-label="Restock recommendation summary">
+    <article class="recommendation-summary-card summary-restock">
+        <span class="recommendation-summary-icon" aria-hidden="true">↗</span>
+        <div>
+            <span class="recommendation-summary-label">Products to consider restocking</span>
+            <strong data-testid="restock-product-count">{{ summary.restock_products }}</strong>
+            <small>Only products with sufficient recent sales history</small>
+        </div>
+    </article>
+    <article class="recommendation-summary-card summary-units">
+        <span class="recommendation-summary-icon" aria-hidden="true">▤</span>
+        <div>
+            <span class="recommendation-summary-label">Estimated units to replenish</span>
+            <strong data-testid="restock-unit-count">{{ summary.suggested_units }}</strong>
+            <small>Combined whole-unit estimates, not a purchase order</small>
+        </div>
+    </article>
+    <article class="recommendation-summary-card summary-history">
+        <span class="recommendation-summary-icon" aria-hidden="true">◷</span>
+        <div>
+            <span class="recommendation-summary-label">Need more sales data</span>
+            <strong data-testid="restock-history-count">{{ summary.needs_more_data }}</strong>
+            <small>Insufficient history or no recent recorded demand</small>
+        </div>
+    </article>
+</section>
+
+<section class="recommendation-formula-card" aria-labelledby="formula-title">
+    <div class="formula-visual" aria-hidden="true">
+        <span class="formula-orbit formula-orbit-one"></span>
+        <span class="formula-orbit formula-orbit-two"></span>
+        <span class="formula-core">Σ</span>
+    </div>
+    <div class="formula-copy">
+        <p class="eyebrow">TRANSPARENT CALCULATION</p>
+        <h2 id="formula-title">A recommendation you can explain.</h2>
+        <p class="formula-equation">Target stock = ceil((average daily sales × lead time) + safety stock)</p>
+        <p class="formula-equation">Suggested restock = max(0, target stock − sellable stock)</p>
+        <small>Average daily sales uses recorded units over the observed period, up to {{ lookback_days }} days. At least {{ minimum_history_days }} calendar days of recorded sales history are required. These estimates do not include unreceived purchase orders.</small>
+    </div>
+</section>
+
+<section class="content-card recommendation-filter-card" aria-label="Search restock recommendations">
+    <form class="recommendation-filter-form" method="get" action="{{ url_for('recommendations') }}">
+        <div class="filter-search">
+            <label for="recommendation-search">Find a product</label>
+            <input id="recommendation-search" name="q" type="search" maxlength="100" value="{{ search_query }}" placeholder="Search by product name or SKU">
+        </div>
+        <button class="button button-primary" type="submit">Search products</button>
+        {% if search_query %}<a class="button button-secondary" href="{{ url_for('recommendations') }}">Clear</a>{% endif %}
+    </form>
+</section>
+
+<section class="content-card recommendation-table-card">
+    <div class="table-card-heading">
+        <div>
+            <h2>Product-level estimates</h2>
+            <p>Suggestions refresh from the current database whenever this page is loaded.</p>
+        </div>
+        <span class="result-count">{{ recommendations|length }} shown · maximum 250 active products</span>
+    </div>
+    <div class="table-responsive">
+        <table class="recommendation-table">
+            <thead>
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Recorded demand</th>
+                    <th scope="col">Sellable stock</th>
+                    <th scope="col">Target stock</th>
+                    <th scope="col">Suggested restock</th>
+                    <th scope="col">Assessment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in recommendations %}
+                <tr data-testid="recommendation-row" data-status="{{ item.status }}">
+                    <td>
+                        <div class="recommendation-product">
+                            <span class="recommendation-product-mark" aria-hidden="true">{{ item.name[:1]|upper }}</span>
+                            <div>
+                                <strong>{{ item.name }}</strong>
+                                <small>{{ item.sku or "No SKU" }} · {{ item.category or "Uncategorized" }}</small>
+                                <span>Lead time {{ item.lead_time_days }} day(s) · Safety stock {{ item.safety_stock }} {{ item.unit }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <strong class="recommendation-number">{{ item.units_sold }} {{ item.unit }}</strong>
+                        {% if item.average_daily_sales is not none %}
+                        <small>{{ item.average_daily_sales|round(2) }} {{ item.unit }}/day</small>
+                        {% endif %}
+                        {% if item.history_days %}
+                        <small>{{ item.history_days }} observed calendar day(s)</small>
+                        {% else %}
+                        <small>No recent units sold</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong class="recommendation-number">{{ item.sellable_stock }} {{ item.unit }}</strong>
+                        <small>Expired stock excluded</small>
+                    </td>
+                    <td>
+                        {% if item.target_stock is not none %}
+                        <strong class="recommendation-number">{{ item.target_stock }} {{ item.unit }}</strong>
+                        {% else %}
+                        <span class="recommendation-dash">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.recommendation_ready and item.suggested_restock > 0 %}
+                        <strong class="suggested-quantity">{{ item.suggested_restock }}</strong>
+                        <small>{{ item.unit }} to consider</small>
+                        {% elif item.recommendation_ready %}
+                        <strong class="recommendation-zero">0</strong>
+                        <small>No additional units suggested</small>
+                        {% else %}
+                        <span class="recommendation-dash">—</span>
+                        <small>Estimate withheld</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.status == "restock" %}
+                        <span class="recommendation-status recommendation-status-restock"><span></span>{{ item.status_label }}</span>
+                        {% elif item.status == "sufficient" %}
+                        <span class="recommendation-status recommendation-status-sufficient"><span></span>{{ item.status_label }}</span>
+                        {% elif item.status == "building_history" %}
+                        <span class="recommendation-status recommendation-status-building"><span></span>{{ item.status_label }}</span>
+                        {% elif item.status == "no_recent_sales" %}
+                        <span class="recommendation-status recommendation-status-muted"><span></span>{{ item.status_label }}</span>
+                        {% else %}
+                        <span class="recommendation-status recommendation-status-muted"><span></span>{{ item.status_label }}</span>
+                        {% endif %}
+                        <small class="recommendation-explanation">{{ item.explanation }}</small>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state recommendation-empty-state">
+                            <span class="empty-state-icon" aria-hidden="true">↗</span>
+                            {% if search_query %}
+                            <strong>No products match this search</strong>
+                            <p>Try a different product name or SKU.</p>
+                            <a class="button button-secondary" href="{{ url_for('recommendations') }}">Clear search</a>
+                            {% else %}
+                            <strong>No active products to analyse</strong>
+                            <p>Create an active product record first. Estimates appear here as sales are recorded.</p>
+                            <a class="button button-primary" href="{{ url_for('new_product') }}">Add a product</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footnote">Restock advice is a planning estimate, not a guaranteed demand forecast or purchase order. It does not account for confirmed incoming stock or supplier constraints.</div>
+</section>
+{% endblock %}
