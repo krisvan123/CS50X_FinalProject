@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading sales-page-heading">
+    <div>
+        <p class="eyebrow">RETAIL OPERATIONS / SALES</p>
+        <h1>Sales history</h1>
+        <p class="page-subtitle">Review recorded sales, captured selling prices, and inventory changes in one place.</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('new_sale') }}"><span aria-hidden="true">＋</span> Record a sale</a>
+</section>
+
+<section class="sales-summary-grid" aria-label="Sales summary">
+    <article class="sales-summary-card sales-summary-featured">
+        <span class="sales-summary-label">Gross revenue recorded</span>
+        <strong>{{ summary.gross_revenue|idr }}</strong>
+        <small>Across {{ summary.transaction_count }} recorded transactions</small>
+        <span class="sales-summary-orb" aria-hidden="true"></span>
+    </article>
+    <article class="sales-summary-card">
+        <span class="sales-summary-mark mark-green" aria-hidden="true">↗</span>
+        <span class="sales-summary-label">Revenue today</span>
+        <strong>{{ summary.today_revenue|idr }}</strong>
+        <small>Gross sales, not profit</small>
+    </article>
+    <article class="sales-summary-card">
+        <span class="sales-summary-mark mark-blue" aria-hidden="true">▤</span>
+        <span class="sales-summary-label">Transactions today</span>
+        <strong>{{ summary.today_count }}</strong>
+        <small>Recorded for today's business date</small>
+    </article>
+</section>
+
+<section class="content-card sales-filter-card" aria-label="Search sales history">
+    <form class="sales-filter-form" method="get" action="{{ url_for('sales') }}">
+        <div class="filter-search">
+            <label for="sales-search">Search sales</label>
+            <input id="sales-search" name="q" type="search" maxlength="100" value="{{ search_query }}" placeholder="Product name, SKU, or sale number">
+        </div>
+        <button class="button button-primary" type="submit">Search history</button>
+        {% if search_query %}<a class="button button-secondary" href="{{ url_for('sales') }}">Clear</a>{% endif %}
+    </form>
+</section>
+
+<section class="content-card sales-table-card">
+    <div class="table-card-heading">
+        <div><h2>Recorded transactions</h2><p>Latest sales first. Selling prices are captured when the sale is recorded.</p></div>
+        <span class="result-count">{{ sales|length }} shown · up to 250 records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="sales-table">
+            <thead>
+                <tr>
+                    <th scope="col">Sale</th>
+                    <th scope="col">Business date</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Unit price</th>
+                    <th scope="col">Gross total</th>
+                    <th scope="col">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr data-testid="sale-row">
+                    <td><span class="sale-reference">#{{ "%05d"|format(sale.sale_id) }}</span><small>{{ sale.occurred_at_utc|replace('T', ' ')|replace('Z', ' UTC') }}</small></td>
+                    <td>{{ sale.business_date }}</td>
+                    <td><strong class="table-primary-text">{{ sale.product_name }}</strong><small>{{ sale.sku or "No SKU" }} · {{ sale.unit }}</small></td>
+                    <td><strong class="quantity-cell">{{ sale.quantity }}</strong> <span class="unit-caption">{{ sale.unit }}</span></td>
+                    <td class="money-cell">{{ sale.unit_selling_price|idr }}</td>
+                    <td><strong class="sale-total-cell">{{ sale.line_total|idr }}</strong></td>
+                    <td><span class="movement-note">{{ sale.note or "—" }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state sales-empty-state">
+                            <span class="empty-state-icon" aria-hidden="true">↗</span>
+                            <strong>No sales recorded yet</strong>
+                            <p>{% if search_query %}Try a different search term.{% else %}Once you record a sale, its value and batch-level stock allocations will appear here.{% endif %}</p>
+                            {% if not search_query %}<a class="button button-primary" href="{{ url_for('new_sale') }}">Record your first sale</a>{% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footnote">Gross revenue is the recorded selling value. It is not profit and does not deduct inventory cost or operating expenses.</div>
+</section>
+{% endblock %}
