@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='6') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='7') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -47,6 +47,10 @@
             <a class="nav-item {% if request.endpoint in ('sales', 'new_sale') %}active{% endif %}" href="{{ url_for('sales') }}" {% if request.endpoint in ('sales', 'new_sale') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">↗</span>
                 <span>Sales</span>
+            </a>
+            <a class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}" href="{{ url_for('recommendations') }}" {% if request.endpoint == 'recommendations' %}aria-current="page"{% endif %}>
+                <span class="nav-icon" aria-hidden="true">◎</span>
+                <span>Restock advice</span>
             </a>
             <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">⇄</span>
@@ -101,6 +105,6 @@
         </footer>
     </div>
 </div>
-<script src="{{ url_for('static', filename='js/app.js', v='2') }}" defer></script>
+<script src="{{ url_for('static', filename='js/app.js', v='3') }}" defer></script>
 </body>
 </html>
