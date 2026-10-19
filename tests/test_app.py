@@ -367,5 +367,202 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertEqual(count, 0)
 
 
+
+    def _batch_form_values(self, product_id: int, **overrides: str) -> dict[str, str]:
+        from datetime import date
+
+        values = {
+            "product_id": str(product_id),
+            "received_date": date.today().isoformat(),
+            "expiry_date": "",
+            "quantity_received": "5",
+            "unit_cost": "1800",
+            "note": "Delivery note 001",
+        }
+        values.update(overrides)
+        return values
+
+    def test_batch_register_explains_setup_when_database_is_missing(self) -> None:
+        self.assertEqual(self.client.get("/batches").status_code, 503)
+
+    def test_movements_ledger_explains_setup_when_database_is_missing(self) -> None:
+        self.assertEqual(self.client.get("/movements").status_code, 503)
+
+    def test_receiving_stock_creates_batch_and_ledger_movement_atomically(self) -> None:
+        from datetime import date
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="0")
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new", self._batch_form_values(product_id)
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/batches")
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch = connection.execute(
+                """
+                SELECT quantity_received, quantity_remaining, unit_cost, received_date, expiry_date
+                FROM stock_batches WHERE product_id = ?
+                """,
+                (product_id,),
+            ).fetchone()
+            movement = connection.execute(
+                """
+                SELECT sm.quantity_delta, op.operation_type, op.note, op.business_date
+                FROM stock_movements AS sm
+                JOIN stock_operations AS op ON op.id = sm.operation_id
+                WHERE sm.product_id = ?
+                """,
+                (product_id,),
+            ).fetchone()
+        finally:
+            connection.close()
+
+        self.assertEqual(batch, (5, 5, 1800, date.today().isoformat(), None))
+        self.assertEqual(
+            movement, (5, "receipt", "Delivery note 001", date.today().isoformat())
+        )
+
+        batches_page = self.client.get("/batches")
+        self.assertEqual(batches_page.status_code, 200)
+        self.assertIn(b"Mineral Water", batches_page.data)
+        self.assertIn(b"Available", batches_page.data)
+
+        movements_page = self.client.get("/movements")
+        self.assertEqual(movements_page.status_code, 200)
+        self.assertIn(b"Stock received", movements_page.data)
+        self.assertIn(b"Delivery note 001", movements_page.data)
+
+    def test_expiry_tracked_product_requires_expiry_date(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="1")
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new",
+            self._batch_form_values(product_id, expiry_date=""),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"An expiry date is required", response.data)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM stock_batches WHERE product_id = ?", (product_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(count, 0)
+
+    def test_product_without_expiry_tracking_rejects_expiry_date(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="0")
+        expiry = (date.today() + timedelta(days=30)).isoformat()
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new",
+            self._batch_form_values(product_id, expiry_date=expiry),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"does not track expiry dates", response.data)
+
+    def test_stock_receipt_rejects_zero_or_negative_quantity(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product()
+        for quantity in ("0", "-2", "1.5", ""):
+            with self.subTest(quantity=quantity):
+                response = self._post_with_csrf(
+                    "/batches/new", "/batches/new",
+                    self._batch_form_values(product_id, quantity_received=quantity),
+                )
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(
+                    b"Quantity must be a whole number greater than zero", response.data
+                )
+        connection = sqlite3.connect(self.database_path)
+        try:
+            count = connection.execute(
+                "SELECT COUNT(*) FROM stock_batches WHERE product_id = ?", (product_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(count, 0)
+
+    def test_stock_receipt_rejects_expiry_before_received_date(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="1")
+        received = date.today().isoformat()
+        expiry = (date.today() - timedelta(days=1)).isoformat()
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new",
+            self._batch_form_values(
+                product_id, received_date=received, expiry_date=expiry
+            ),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Expiry date cannot be earlier than the received date", response.data)
+
+    def test_stock_receipt_rejects_archived_product(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product()
+        self._post_with_csrf("/products", f"/products/{product_id}/archive", {})
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new", self._batch_form_values(product_id)
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Archived or missing products cannot receive stock", response.data)
+
+    def test_stock_receipt_rejects_missing_csrf_token(self) -> None:
+        initialize_database(database_path=self.database_path)
+        response = self.client.post("/batches/new", data={
+            "product_id": "1",
+            "received_date": "2026-01-01",
+            "expiry_date": "",
+            "quantity_received": "5",
+            "unit_cost": "1000",
+            "note": "",
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_expired_batch_is_flagged_in_the_batch_register(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="1")
+        received = (date.today() - timedelta(days=20)).isoformat()
+        expiry = (date.today() - timedelta(days=2)).isoformat()
+        response = self._post_with_csrf(
+            "/batches/new", "/batches/new",
+            self._batch_form_values(
+                product_id, received_date=received, expiry_date=expiry
+            ),
+        )
+        self.assertEqual(response.status_code, 302)
+        page = self.client.get("/batches?status=expired")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b"Expired", page.data)
+        self.assertIn(b'data-testid="batch-expired-count">1', page.data)
+
+    def test_movement_search_and_type_filter_are_applied(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Mineral Water")
+        self._post_with_csrf(
+            "/batches/new", "/batches/new", self._batch_form_values(product_id)
+        )
+        response = self.client.get(
+            "/movements", query_string={"q": "Mineral", "type": "receipt"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Mineral Water", response.data)
+        self.assertIn(b"Stock received", response.data)
+        response = self.client.get(
+            "/movements", query_string={"q": "Mineral", "type": "sale"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"No stock movements found", response.data)
+
+
 if __name__ == "__main__":
     unittest.main()
