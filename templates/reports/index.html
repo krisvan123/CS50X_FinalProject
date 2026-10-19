@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading reports-heading">
+    <div>
+        <p class="eyebrow">BUSINESS PERFORMANCE / REPORTING</p>
+        <h1>Reports & analytics</h1>
+        <p class="page-subtitle">Understand recorded sales, compare daily performance, and export the underlying records for further analysis.</p>
+    </div>
+    <div class="report-as-of">
+        <span>CURRENT INVENTORY SNAPSHOT</span>
+        <strong>{{ today }}</strong>
+        <small>Batch balances as of today</small>
+    </div>
+</section>
+
+<section class="content-card report-filter-card" aria-label="Report date range">
+    <div class="report-filter-intro">
+        <span class="report-filter-icon" aria-hidden="true">◷</span>
+        <div>
+            <h2>Choose a reporting period</h2>
+            <p>Sales and movement activity are filtered by their business date. Choose up to 366 days.</p>
+        </div>
+    </div>
+    <form class="report-date-form" method="get" action="{{ url_for('reports') }}">
+        <div class="form-field">
+            <label for="start_date">Start date</label>
+            <input id="start_date" name="start_date" type="date" value="{{ start_date }}" max="{{ today }}" required>
+        </div>
+        <div class="report-date-separator" aria-hidden="true">→</div>
+        <div class="form-field">
+            <label for="end_date">End date</label>
+            <input id="end_date" name="end_date" type="date" value="{{ end_date }}" max="{{ today }}" required>
+        </div>
+        <button class="button button-primary" type="submit">Apply period <span aria-hidden="true">↗</span></button>
+        <a class="button button-secondary" href="{{ url_for('reports') }}">Last 30 days</a>
+    </form>
+</section>
+
+<section class="report-export-grid" aria-label="Download reports">
+    <a class="report-export-card export-sales" href="{{ url_for('export_report', report_type='sales', start_date=start_date, end_date=end_date) }}">
+        <span class="report-export-icon" aria-hidden="true">↗</span>
+        <span class="report-export-copy">
+            <strong>Sales transactions</strong>
+            <small>Detailed sale lines · {{ start_date }} to {{ end_date }}</small>
+        </span>
+        <span class="report-export-action">CSV <span aria-hidden="true">↓</span></span>
+    </a>
+    <a class="report-export-card export-movements" href="{{ url_for('export_report', report_type='movements', start_date=start_date, end_date=end_date) }}">
+        <span class="report-export-icon" aria-hidden="true">⇄</span>
+        <span class="report-export-copy">
+            <strong>Stock movement ledger</strong>
+            <small>Receipts and sale movements · selected period</small>
+        </span>
+        <span class="report-export-action">CSV <span aria-hidden="true">↓</span></span>
+    </a>
+    <a class="report-export-card export-inventory" href="{{ url_for('export_report', report_type='inventory') }}">
+        <span class="report-export-icon" aria-hidden="true">▣</span>
+        <span class="report-export-copy">
+            <strong>Current inventory snapshot</strong>
+            <small>Batch quantities, expiry dates, and unit cost</small>
+        </span>
+        <span class="report-export-action">CSV <span aria-hidden="true">↓</span></span>
+    </a>
+</section>
+
+<section class="report-summary-grid" aria-label="Sales summary for selected period">
+    <article class="report-summary-card report-summary-revenue">
+        <span class="report-summary-top">GROSS REVENUE</span>
+        <span class="report-summary-symbol" aria-hidden="true">↗</span>
+        <strong>{{ summary.gross_revenue|idr }}</strong>
+        <small>Recorded sales value, not profit</small>
+    </article>
+    <article class="report-summary-card">
+        <span class="report-summary-top">TRANSACTIONS</span>
+        <span class="report-summary-symbol" aria-hidden="true">▤</span>
+        <strong class="report-summary-count">{{ summary.transaction_count }}</strong>
+        <small>Sales recorded in this period</small>
+    </article>
+    <article class="report-summary-card">
+        <span class="report-summary-top">UNITS SOLD</span>
+        <span class="report-summary-symbol" aria-hidden="true">▣</span>
+        <strong class="report-summary-count">{{ summary.units_sold }}</strong>
+        <small>Across recorded sale lines</small>
+    </article>
+    <article class="report-summary-card report-summary-expiry">
+        <span class="report-summary-top">EXPIRY WATCH</span>
+        <span class="report-summary-symbol" aria-hidden="true">◷</span>
+        <strong class="report-summary-count">{{ current_inventory.expired_batches + current_inventory.near_expiry_batches }}</strong>
+        <small>Expired or due within {{ warning_days }} days</small>
+    </article>
+</section>
+
+<section class="content-card report-chart-card">
+    <div class="report-section-heading">
+        <div>
+            <p class="eyebrow">DAILY PERFORMANCE</p>
+            <h2>Gross revenue trend</h2>
+            <p>Daily totals are calculated from saved sale items using their captured selling prices.</p>
+        </div>
+        <div class="chart-peak">
+            <span>Highest daily revenue</span>
+            <strong>{{ peak_revenue|idr }}</strong>
+        </div>
+    </div>
+
+    {% if summary.transaction_count %}
+    <div class="report-chart-legend"><span></span> Gross revenue per business date</div>
+    <div class="report-chart-scroll" role="group" aria-label="Daily gross revenue chart. Scroll horizontally for longer date ranges.">
+        <div class="report-chart-bars">
+            {% for bar in daily_chart %}
+            <div class="report-chart-column" title="{{ bar.date }} · {{ bar.gross_revenue|idr }} · {{ bar.transaction_count }} transaction(s)"
+                 aria-label="{{ bar.date }}: {{ bar.gross_revenue|idr }}, {{ bar.transaction_count }} transaction(s)">
+                <div class="report-chart-plot">
+                    <span class="report-chart-bar {% if bar.gross_revenue == peak_revenue and peak_revenue > 0 %}report-chart-bar-peak{% endif %}"
+                          style="--bar-height: {{ bar.height_percent }}%;"></span>
+                </div>
+                <span class="report-chart-day">{% if bar.show_label %}{{ bar.month_label }}{% else %}·{% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    <p class="report-chart-caption">Dates without a recorded sale remain at zero. The chart uses gross revenue rather than profit.</p>
+    {% else %}
+    <div class="report-empty-chart">
+        <span class="report-empty-icon" aria-hidden="true">↗</span>
+        <strong>No sales in this reporting period</strong>
+        <p>Recorded sales will appear here once transactions fall within the selected dates.</p>
+    </div>
+    {% endif %}
+</section>
+
+<section class="report-insights-grid">
+    <article class="content-card report-table-card">
+        <div class="report-section-heading">
+            <div>
+                <p class="eyebrow">PRODUCT PERFORMANCE</p>
+                <h2>Top products by revenue</h2>
+                <p>Up to ten products with recorded sales in this period.</p>
+            </div>
+            <span class="report-section-icon" aria-hidden="true">★</span>
+        </div>
+        {% if top_products %}
+        <div class="table-responsive">
+            <table class="report-table">
+                <thead><tr><th scope="col">Product</th><th scope="col">Units</th><th scope="col">Transactions</th><th scope="col">Gross revenue</th></tr></thead>
+                <tbody>
+                    {% for product in top_products %}
+                    <tr>
+                        <td><strong>{{ product.product_name }}</strong><small>{{ product.sku or "No SKU" }} · {{ product.unit }}</small></td>
+                        <td>{{ product.units_sold }}</td>
+                        <td>{{ product.transaction_count }}</td>
+                        <td><strong class="report-money">{{ product.gross_revenue|idr }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="report-inline-empty"><strong>No product sales to rank</strong><p>Choose another period or record a sale to populate this summary.</p></div>
+        {% endif %}
+    </article>
+
+    <article class="content-card report-stock-card">
+        <div class="report-section-heading">
+            <div>
+                <p class="eyebrow">LIVE INVENTORY</p>
+                <h2>Stock position</h2>
+                <p>Current batch status; not restricted to the selected sales period.</p>
+            </div>
+            <span class="report-section-icon" aria-hidden="true">▣</span>
+        </div>
+        <div class="stock-position-grid">
+            <div><span>Sellable units</span><strong>{{ current_inventory.sellable_units }}</strong></div>
+            <div><span>Stocked batches</span><strong>{{ current_inventory.stocked_batches }}</strong></div>
+            <div><span>Near expiry</span><strong class="stock-warning">{{ current_inventory.near_expiry_batches }}</strong></div>
+            <div><span>Expired stock</span><strong class="stock-danger">{{ current_inventory.expired_batches }}</strong></div>
+        </div>
+        {% if inventory %}
+        <div class="inventory-preview-list">
+            {% for batch in inventory[:5] %}
+            <div class="inventory-preview-row">
+                <span class="inventory-preview-dot {% if batch.batch_status == 'Expired' %}dot-expired{% elif batch.batch_status == 'Near expiry' %}dot-near-expiry{% endif %}" aria-hidden="true"></span>
+                <div><strong>{{ batch.product_name }}</strong><small>Batch #{{ batch.batch_id }} · {{ batch.quantity_remaining }} {{ batch.unit }}</small></div>
+                <span class="inventory-preview-status">{{ batch.batch_status }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="report-inline-empty"><strong>No remaining batch stock</strong><p>Receive a delivery to create a stock batch.</p></div>
+        {% endif %}
+    </article>
+</section>
+
+<section class="content-card report-table-card report-movement-table-card">
+    <div class="report-section-heading">
+        <div>
+            <p class="eyebrow">AUDIT TRAIL</p>
+            <h2>Recent stock movements in this period</h2>
+            <p>{{ movement_count }} movement record(s) found. The preview shows up to 20 records; CSV exports include the full filtered result.</p>
+        </div>
+        <a class="report-text-link" href="{{ url_for('export_report', report_type='movements', start_date=start_date, end_date=end_date) }}">Export movement ledger <span aria-hidden="true">↗</span></a>
+    </div>
+    {% if movements %}
+    <div class="table-responsive">
+        <table class="report-table">
+            <thead><tr><th scope="col">Date</th><th scope="col">Product / batch</th><th scope="col">Operation</th><th scope="col">Quantity change</th><th scope="col">Reason / note</th></tr></thead>
+            <tbody>
+                {% for movement in movements %}
+                <tr>
+                    <td>{{ movement.business_date }}<small>{{ movement.occurred_at_utc|replace('T', ' ')|replace('Z', ' UTC') }}</small></td>
+                    <td><strong>{{ movement.product_name }}</strong><small>Batch #{{ movement.batch_id }} · {{ movement.sku or "No SKU" }}</small></td>
+                    <td>{{ movement.operation_label }}</td>
+                    <td><strong class="{% if movement.quantity_delta > 0 %}report-quantity-in{% else %}report-quantity-out{% endif %}">{{ movement.quantity_display }} {{ movement.unit }}</strong></td>
+                    <td>{{ movement.reason or movement.note or "—" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="report-inline-empty"><strong>No movements in this period</strong><p>Movement records will appear here after receiving stock or recording sales.</p></div>
+    {% endif %}
+</section>
+
+<p class="report-disclaimer">Reports reflect currently recorded data. Gross revenue is not profit. The inventory snapshot shows current batch balances; historical inventory snapshots are not reconstructed. Disposals can only be reported once recorded through a supported stock-disposal workflow.</p>
+{% endblock %}
