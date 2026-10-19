@@ -36,10 +36,12 @@ The Reports page supports date-filtered sales and movement analysis, a daily gro
 - `database.py` opens a request-scoped SQLite connection, enables foreign-key enforcement, and closes connections during Flask teardown.
 - `schema.sql` defines products, operations, batches, sales, sale items, stock movements, application settings, constraints, triggers, and audit views.
 - `init_db.py` safely initializes a new local database, runs SQLite integrity/foreign-key checks, and refuses to overwrite an existing database.
+- `seed_demo.py` creates an isolated, fictional demo dataset for Phase 13; it refuses to mix demo records into an unrelated populated database.
 - `requirements.txt` lists the Python package dependency.
 - `templates/` contains the shared layout and pages for dashboard, products, batches, sales, stock actions, movement ledger, recommendations, reports, settings, setup, and errors.
 - `static/css/styles.css` styles the responsive interface and shared components. `static/js/app.js` adds accessible presentation effects and the live sale summary.
 - `tests/test_app.py` contains the unittest suite. Tests use temporary databases and do not touch the operator’s local database.
+- `tests/test_seed_demo.py` checks demo seeding, rerun safety, ledger consistency, and page rendering using temporary databases.
 - `DESIGN.md` explains the technical architecture, database invariants, transaction flows, and design trade-offs.
 - `docs/` records the project brief, user flows, schema choices, implementation milestones, and review notes.
 - `.github/workflows/tests.yml` runs the automated test suite on pushes and pull requests to `main`.
@@ -59,7 +61,26 @@ python app.py
 
 Use an installed Python version supported by Flask 3.x; if Python 3.12 is unavailable, replace `py -3.12` with the launcher version installed on your machine. Open the local URL printed by Flask, typically `http://127.0.0.1:5000`.
 
-The initializer does not add synthetic data. Create a product through the interface, receive a batch, record a sale, then inspect the movement ledger, recommendations, and reports. To demonstrate expiry behavior, configure a product to track expiry and receive a batch with a valid expiry date.
+The initializer does not add synthetic data. For a clean manual walkthrough, create products and transactions through the interface. For the planned Phase 13 presentation, use the isolated demo dataset below; it includes realistic inventory scenarios without touching the default local database.
+
+### Optional demo dataset (recommended for Phase 13)
+
+Run from the repository root in Windows PowerShell:
+
+```powershell
+python seed_demo.py
+$env:WARUNGWISE_DATABASE = (Resolve-Path .\instance\warungwise-demo.db).Path
+python app.py
+```
+
+The script prepares a separate `instance/warungwise-demo.db` with fictional products, batches, sales, a disposal, and a stock-count correction. The `WARUNGWISE_DATABASE` setting directs the app to that database for this PowerShell session. Remove it to return to the normal local database:
+
+```powershell
+Remove-Item Env:WARUNGWISE_DATABASE -ErrorAction SilentlyContinue
+python app.py
+```
+
+The seed command refuses to mix demo data into an unrelated non-empty database and does not delete records. If the complete dataset is already present, rerunning the command is a safe no-op. Demo records are synthetic and must not be represented as actual shop transactions.
 
 **Data safety:** `python init_db.py` refuses to overwrite an existing database. It creates `instance/warungwise.db` only for a new installation. Back up that file before database maintenance. The database, journals, and local instance folder are excluded from Git.
 
@@ -69,7 +90,7 @@ The initializer does not add synthetic data. Create a product through the interf
 python -m unittest discover -s tests -v
 ```
 
-The integrated automated suite currently has 64 passing tests on Python 3.12 in [GitHub Actions run 39216671672](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216671672). Tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, CSRF rejection, replay protection, historical-balance consistency, HTTP security headers, and concurrent stock requests. Automated tests do not replace visual browser review or deployment-specific security testing.
+The automated test suite runs on Python 3.12 through [GitHub Actions](https://github.com/krisvan123/CS50X_FinalProject/actions). Tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, CSRF rejection, replay protection, historical-balance consistency, HTTP security headers, concurrent stock requests, and the isolated demo seed. Automated tests do not replace visual browser review or deployment-specific security testing.
 
 ## Main routes
 

@@ -532,7 +532,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # Never embed an actual secret in source control. A stable value can
         # be supplied through WARUNGWISE_SECRET_KEY when the application needs it.
         SECRET_KEY=os.environ.get("WARUNGWISE_SECRET_KEY") or os.urandom(32),
-        DATABASE=str(Path(app.instance_path) / "warungwise.db"),
+        DATABASE=os.environ.get("WARUNGWISE_DATABASE") or str(Path(app.instance_path) / "warungwise.db"),
         MAX_CONTENT_LENGTH=1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
