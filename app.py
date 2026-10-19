@@ -544,6 +544,29 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     database.init_app(app)
 
+    @app.after_request
+    def add_security_headers(response: Response) -> Response:
+        """Apply conservative browser security and dynamic-page cache headers."""
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; base-uri 'self'; form-action 'self'; "
+            "frame-ancestors 'none'; object-src 'none'; img-src 'self' data:; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "
+            "script-src 'self'; connect-src 'self'",
+        )
+        # Inventory pages contain business information; avoid storing dynamic pages
+        # in browser or intermediary caches. Static assets remain cacheable.
+        if request.endpoint != "static":
+            response.headers.setdefault("Cache-Control", "no-store")
+        return response
+
     @app.template_filter("idr")
     def format_idr(value: Any) -> str:
         """Format a whole-rupiah amount without floating-point conversion."""

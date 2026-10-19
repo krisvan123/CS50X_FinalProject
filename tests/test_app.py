@@ -37,6 +37,32 @@ class WarungWiseAppTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_directory.cleanup()
 
+
+    def test_browser_security_headers_and_dynamic_no_store_policy(self) -> None:
+        initialize_database(database_path=self.database_path)
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(response.headers.get("X-Frame-Options"), "DENY")
+        self.assertEqual(
+            response.headers.get("Referrer-Policy"),
+            "strict-origin-when-cross-origin",
+        )
+        self.assertEqual(
+            response.headers.get("Permissions-Policy"),
+            "camera=(), microphone=(), geolocation=()",
+        )
+        csp = response.headers.get("Content-Security-Policy", "")
+        self.assertIn("default-src 'self'", csp)
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("object-src 'none'", csp)
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+
+        static_response = self.client.get("/static/css/styles.css")
+        self.assertEqual(static_response.status_code, 200)
+        self.assertEqual(static_response.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertNotEqual(static_response.headers.get("Cache-Control"), "no-store")
+
     def test_home_explains_first_time_setup(self) -> None:
         response = self.client.get("/")
 
