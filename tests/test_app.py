@@ -1104,7 +1104,7 @@ class WarungWiseAppTests(unittest.TestCase):
         first_client = self.app.test_client()
         page = first_client.get(page_path)
         self.assertEqual(page.status_code, 200, page.data.decode("utf-8", errors="replace"))
-        csrf_match = re.search(rb'name="csrf_token"\\s+value="([^"]+)"', page.data)
+        csrf_match = re.search(rb'name="csrf_token"\s+value="([^"]+)"', page.data)
         self.assertIsNotNone(csrf_match, "Expected the page to render a CSRF token.")
         csrf = csrf_match.group(1).decode("ascii")
 
