@@ -232,6 +232,24 @@ def _csrf_is_valid() -> bool:
     )
 
 
+def _begin_inventory_write(connection: sqlite3.Connection) -> bool:
+    """Acquire SQLite's write reservation before reading stock for a mutation.
+
+    BEGIN IMMEDIATE serializes stock-changing requests before their duplicate
+    token and balance checks. This avoids stale read-to-write upgrades when two
+    requests arrive together; the unique request-token constraint remains the
+    final duplicate-operation safeguard.
+    """
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+    except sqlite3.OperationalError:
+        current_app.logger.warning(
+            "Could not acquire SQLite write reservation for an inventory operation."
+        )
+        return False
+    return True
+
+
 def _empty_product_form() -> dict[str, str]:
     """Provide safe initial values for the create-product form."""
     return {
@@ -1035,6 +1053,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", request_token):
             abort(400)
 
+        if not _begin_inventory_write(connection):
+            return render_template(
+                "error.html", title="Inventory busy", error_code=503,
+                message="Another inventory change is being saved. No stock change was made; wait a moment and retry.",
+            ), 503
+
         existing_operation = connection.execute(
             "SELECT operation_type FROM stock_operations WHERE request_token = ?",
             (request_token,),
@@ -1738,6 +1762,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 request_token=request_token, today=today.isoformat(),
             ), 400
 
+        if not _begin_inventory_write(connection):
+            return render_template(
+                "error.html", title="Inventory busy", error_code=503,
+                message="Another inventory change is being saved. No stock change was made; wait a moment and retry.",
+            ), 503
+
         existing_operation = connection.execute(
             "SELECT operation_type FROM stock_operations WHERE request_token = ?",
             (request_token,),
@@ -2113,6 +2143,12 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             abort(400)
         if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", request_token):
             abort(400)
+
+        if not _begin_inventory_write(connection):
+            return render_template(
+                "error.html", title="Inventory busy", error_code=503,
+                message="Another inventory change is being saved. No stock change was made; wait a moment and retry.",
+            ), 503
 
         existing_operation = connection.execute(
             "SELECT operation_type FROM stock_operations WHERE request_token = ?",

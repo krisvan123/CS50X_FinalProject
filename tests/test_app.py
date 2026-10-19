@@ -13,7 +13,9 @@ import re
 import sqlite3
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Barrier
 
 from app import create_app
 from init_db import initialize_database
@@ -1069,6 +1071,69 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertEqual(rows[1][1], "'=2+2")
         self.assertEqual(rows[1][2], "'=SKU-1")
 
+
+
+    def test_concurrent_receipt_submissions_with_same_token_are_serialized(self) -> None:
+        """Two simultaneous POSTs of one receipt create only one operation."""
+        product_id = self._create_product()
+        first_client = self.app.test_client()
+        form = first_client.get("/batches/new")
+        self.assertEqual(form.status_code, 200)
+        csrf = re.search(rb'name="csrf_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        request_token = re.search(
+            rb'name="request_token"\s+value="([^"]+)"', form.data
+        ).group(1).decode()
+
+        second_client = self.app.test_client()
+        with second_client.session_transaction() as saved_session:
+            saved_session["_csrf_token"] = csrf
+
+        from datetime import date
+        payload = {
+            "csrf_token": csrf,
+            "request_token": request_token,
+            "product_id": str(product_id),
+            "received_date": date.today().isoformat(),
+            "expiry_date": "",
+            "quantity_received": "4",
+            "unit_cost": "1250",
+            "note": "Concurrent retry",
+        }
+        barrier = Barrier(2)
+
+        def submit(client):
+            barrier.wait(timeout=5)
+            return client.post("/batches/new", data=payload)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first_future = pool.submit(submit, first_client)
+            second_future = pool.submit(submit, second_client)
+            responses = [first_future.result(timeout=10), second_future.result(timeout=10)]
+
+        self.assertEqual(
+            sorted(response.status_code for response in responses),
+            [302, 302],
+        )
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_operations WHERE request_token = ?",
+                (request_token,),
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_batches WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0], 4)
+            self.assertEqual(connection.execute(
+                "SELECT difference FROM v_batch_balance_audit WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0], 0)
+        finally:
+            connection.close()
 
     def test_stock_receipt_duplicate_submission_uses_same_request_token(self) -> None:
         product_id = self._create_product()
