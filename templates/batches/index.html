@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">INVENTORY CONTROL / BATCHES</p>
+        <h1>Stock batches</h1>
+        <p class="page-subtitle">Track each delivery separately, know what remains, and keep an eye on expiry dates.</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('new_batch') }}"><span aria-hidden="true">＋</span> Receive stock</a>
+</section>
+
+<section class="batch-summary-grid" aria-label="Stock batch summary">
+    <article class="batch-summary-card">
+        <span class="batch-summary-icon batch-summary-green" aria-hidden="true">▣</span>
+        <div><span class="batch-summary-label">Batches with stock</span><strong data-testid="batch-active-count">{{ summary.active_batches }}</strong></div>
+        <small>Available to manage</small>
+    </article>
+    <article class="batch-summary-card">
+        <span class="batch-summary-icon batch-summary-amber" aria-hidden="true">◷</span>
+        <div><span class="batch-summary-label">Near expiry</span><strong data-testid="batch-near-expiry-count">{{ summary.near_expiry_batches }}</strong></div>
+        <small>Within {{ summary.expiry_warning_days }} days</small>
+    </article>
+    <article class="batch-summary-card">
+        <span class="batch-summary-icon batch-summary-red" aria-hidden="true">!</span>
+        <div><span class="batch-summary-label">Expired stock</span><strong data-testid="batch-expired-count">{{ summary.expired_batches }}</strong></div>
+        <small>Remaining quantity above zero</small>
+    </article>
+    <article class="batch-summary-card">
+        <span class="batch-summary-icon batch-summary-neutral" aria-hidden="true">✓</span>
+        <div><span class="batch-summary-label">Depleted batches</span><strong data-testid="batch-depleted-count">{{ summary.depleted_batches }}</strong></div>
+        <small>Kept for audit history</small>
+    </article>
+</section>
+
+<section class="content-card batch-filter-card" aria-label="Search and filter stock batches">
+    <form class="batch-filter-form" method="get" action="{{ url_for('batches') }}">
+        <div class="filter-search">
+            <label for="batch-search">Search batches</label>
+            <input id="batch-search" name="q" type="search" maxlength="100" value="{{ search_query }}" placeholder="Product name, SKU, or batch number">
+        </div>
+        <div class="filter-field">
+            <label for="batch-status">Batch status</label>
+            <select id="batch-status" name="status">
+                <option value="all" {% if status == "all" %}selected{% endif %}>All batches</option>
+                <option value="available" {% if status == "available" %}selected{% endif %}>Available</option>
+                <option value="near_expiry" {% if status == "near_expiry" %}selected{% endif %}>Near expiry</option>
+                <option value="expired" {% if status == "expired" %}selected{% endif %}>Expired</option>
+                <option value="depleted" {% if status == "depleted" %}selected{% endif %}>Depleted</option>
+            </select>
+        </div>
+        <button class="button button-primary" type="submit">Apply filters</button>
+        {% if search_query or status != "all" %}
+        <a class="button button-secondary" href="{{ url_for('batches') }}">Clear</a>
+        {% endif %}
+    </form>
+</section>
+
+<section class="content-card batch-table-card">
+    <div class="table-card-heading">
+        <div>
+            <h2>Batch register</h2>
+            <p>Expiry risks and remaining quantities are kept visible in the register.</p>
+        </div>
+        <span class="result-count">{{ batches|length }} shown · up to 300 records</span>
+    </div>
+    <div class="table-responsive">
+        <table class="batch-table">
+            <thead>
+                <tr>
+                    <th scope="col">Batch</th>
+                    <th scope="col">Product</th>
+                    <th scope="col">Received</th>
+                    <th scope="col">Expiry date</th>
+                    <th scope="col">Remaining</th>
+                    <th scope="col">Unit cost</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for batch in batches %}
+                <tr data-testid="batch-row">
+                    <td><span class="batch-reference">#{{ "%05d"|format(batch.batch_id) }}</span><small>Received {{ batch.quantity_received }} {{ batch.unit }}</small></td>
+                    <td>
+                        <strong class="table-primary-text">{{ batch.product_name }}</strong>
+                        <small>{{ batch.sku or "No SKU" }} · {{ batch.unit }}</small>
+                    </td>
+                    <td>{{ batch.received_date }}</td>
+                    <td>
+                        {% if batch.expiry_date %}
+                        <span class="{% if batch.batch_status == 'expired' %}expiry-date expired-date{% elif batch.batch_status == 'near_expiry' %}expiry-date near-expiry-date{% else %}expiry-date{% endif %}">{{ batch.expiry_date }}</span>
+                        {% else %}
+                        <span class="no-expiry">Not tracked</span>
+                        {% endif %}
+                    </td>
+                    <td><strong class="quantity-cell">{{ batch.quantity_remaining }}</strong> <span class="unit-caption">{{ batch.unit }}</span></td>
+                    <td class="money-cell">{{ batch.unit_cost|idr }}</td>
+                    <td>
+                        {% if batch.batch_status == "available" %}
+                        <span class="state-chip state-available"><span></span>Available</span>
+                        {% elif batch.batch_status == "near_expiry" %}
+                        <span class="state-chip state-near-expiry"><span></span>Near expiry</span>
+                        {% elif batch.batch_status == "expired" %}
+                        <span class="state-chip state-expired"><span></span>Expired</span>
+                        {% else %}
+                        <span class="state-chip state-depleted"><span></span>Depleted</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state batch-empty-state">
+                            <span class="empty-state-icon" aria-hidden="true">▣</span>
+                            <strong>No stock batches found</strong>
+                            <p>{% if search_query or status != "all" %}Try a different search or status filter.{% else %}When a delivery arrives, record it as a batch to start tracking stock and expiry.{% endif %}</p>
+                            {% if not search_query and status == "all" %}
+                            <a class="button button-primary" href="{{ url_for('new_batch') }}">Receive your first batch</a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footnote">Stock quantity is changed through the movement ledger. Batch receipt details are preserved for audit history.</div>
+</section>
+{% endblock %}
