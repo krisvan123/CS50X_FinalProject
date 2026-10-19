@@ -40,6 +40,7 @@ The Reports page supports date-filtered sales and movement analysis, a daily gro
 - `templates/` contains the shared layout and pages for dashboard, products, batches, sales, stock actions, movement ledger, recommendations, reports, settings, setup, and errors.
 - `static/css/styles.css` styles the responsive interface and shared components. `static/js/app.js` adds accessible presentation effects and the live sale summary.
 - `tests/test_app.py` contains the unittest suite. Tests use temporary databases and do not touch the operator’s local database.
+- `DESIGN.md` explains the technical architecture, database invariants, transaction flows, and design trade-offs.
 - `docs/` records the project brief, user flows, schema choices, implementation milestones, and review notes.
 - `.github/workflows/tests.yml` runs the automated test suite on pushes and pull requests to `main`.
 
@@ -68,7 +69,7 @@ The initializer does not add synthetic data. Create a product through the interf
 python -m unittest discover -s tests -v
 ```
 
-The integrated automated suite currently has 57 passing tests on Python 3.12 in GitHub Actions. The tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, idempotent form resubmission, and a historical-balance boundary. Automated tests are not a substitute for browser-based visual review, concurrency testing, or a final manual security review.
+The integrated automated suite currently has 58 passing tests on Python 3.12 in [GitHub Actions run 39213601559](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39213601559). Tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, idempotent receipt/sale/disposal resubmission, and historical-balance consistency. Automated tests are not a substitute for browser-based visual review, true concurrent-request testing, or a final manual security review.
 
 ## Main routes
 

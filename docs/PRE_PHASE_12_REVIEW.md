@@ -1,8 +1,8 @@
 # Pre-Phase 12 Quality Review
 
 **Review date:** October 19, 2026  
-**Reviewed commit:** `507b512555d8634378d4fd080150ceaf886d5e9b`  
-**Automated verification:** [GitHub Actions run 39213007801](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39213007801) — 57 tests passed on Python 3.12.  
+**Reviewed commit:** `7f6fc75483d0a72e2a0bbc1dcea753405b559c56`  
+**Automated verification:** [GitHub Actions run 39213601559](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39213601559) — 58 tests passed on Python 3.12.  
 **Status:** Core pre-Phase 12 improvements are implemented. This document does not claim that the full security or browser review is complete.
 
 ## Improvements completed before Phase 12
@@ -24,7 +24,7 @@
 - Server-side validation and CSRF checks cover state-changing workflows.
 - Sales, receipts, and stock actions use transactions with rollback on database failure.
 - Reports distinguish gross revenue from profit and recorded disposal cost from estimated loss.
-- The latest CI run completed all 57 automated tests successfully.
+- The latest code CI run completed all 58 automated tests successfully, including duplicate stock-action submission and a historical-balance case where a later count correction could otherwise hide an invalid negative interim balance.
 
 ## Explicit remaining work for Phase 12
 
@@ -44,4 +44,4 @@
 
 ## Assessment boundary
 
-The 57-test CI result is evidence that the currently automated scenarios pass. It is not a 10/10 guarantee, an official CS50 grade, a penetration-test result, or evidence of real-world shop validation. Those claims require separate evidence.
+The 58-test CI result is evidence that the currently automated scenarios pass. It is not a 10/10 guarantee, an official CS50 grade, a penetration-test result, or evidence of real-world shop validation. Those claims require separate evidence.
