@@ -1,6 +1,6 @@
 # Phase 10 — Reports and CSV Export
 
-**Status:** Implemented; the integrated application passed 57 automated tests on Python 3.12 in [GitHub Actions run 39215925741](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39215925741) on October 19, 2026. 
+**Status:** Implemented; the integrated application passed 57 automated tests on Python 3.12 in [GitHub Actions run 39216329904](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216329904) on October 19, 2026. 
 **Scope:** Date-filtered sales analytics, daily revenue visualisation, top-product analysis, a current batch snapshot, and CSV downloads.
 
 ## Reports page
@@ -43,7 +43,7 @@ Run the complete suite:
 python -m unittest discover -s tests -v
 ```
 
-The integrated suite also covers disposal cost basis, stock-count corrections, configurable warning days, duplicate request-token submissions, and protection against unsafe backdated sale allocations. The GitHub Actions run linked above completed successfully and reported 62 tests passing. Re-run the suite after future code changes.
+The integrated suite also covers disposal cost basis, stock-count corrections, configurable warning days, duplicate request-token submissions, and protection against unsafe backdated sale allocations. The GitHub Actions run linked above completed successfully and reported 63 tests passing. Re-run the suite after future code changes.
 
 ## AI assistance note
 

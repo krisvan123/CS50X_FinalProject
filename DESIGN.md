@@ -81,6 +81,6 @@ The request body size is limited, and session cookies are configured HttpOnly an
 
 ## 7. Verification and limitations
 
-The integrated automated suite contains 62 tests and passed on Python 3.12 in [GitHub Actions run 39215925741](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39215925741). Tests cover form validation, FEFO, expired stock, reports/CSV, disposal/count corrections, settings, duplicate request-token submissions, historical-balance scenarios, HTTP security headers, and concurrent receipt/sale/disposal requests.
+The integrated automated suite contains 63 tests and passed on Python 3.12 in [GitHub Actions run 39216329904](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216329904). Tests cover form validation, FEFO, expired stock, reports/CSV, disposal/count corrections, settings and CSRF rejection, duplicate request-token submissions, historical-balance scenarios, HTTP security headers, and concurrent receipt/sale/disposal requests.
 
 This CI result does not replace the Phase 12 manual browser and security gate. That phase must still cover real concurrent duplicate POSTs, broader temporal-ledger cases, keyboard/mobile/reduced-motion review, error paths, and the local setup flow. The README's Video Demo URL remains pending until the project video is recorded.

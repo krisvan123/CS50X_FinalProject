@@ -1,8 +1,8 @@
 # Phase 12 — Testing and Security Review
 
 **Status:** In progress — automated CI gate passes; manual browser and final security review are still required.  
-**Current reviewed code commit:** `f3acfe4676fb853bed65ff0a44d1fcb0e39a53f9`  
-**Automated verification:** [GitHub Actions run 39215925741](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39215925741) — **62 tests passed** on Python 3.12 on October 19, 2026.
+**Current reviewed code commit:** `78b8a160d05ca971c4e56a10c5670bf83d34b739`  
+**Automated verification:** [GitHub Actions run 39216329904](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216329904) — **63 tests passed** on Python 3.12 on October 19, 2026.
 
 ## 1. Phase 12 goal
 
@@ -31,10 +31,11 @@ Confirm that the core inventory workflows preserve their data invariants under i
 | Same stock-action request token is posted twice sequentially | Only one operation and one movement are recorded | Pass |
 | Backdated sale would make a later batch balance negative | Sale is rejected and existing balance/audit remains unchanged | Pass |
 | Browser security header policy | Required headers exist; dynamic HTML is no-store and static CSS is cacheable | Pass |
+| Missing CSRF token on disposal/settings POST | Both requests are rejected with HTTP 400; stock and settings remain unchanged | Pass |
 | Disposal/correction workflows | Reasons are required; overdraws are rejected; batch audit remains balanced | Pass |
 | Expiry-warning settings | Valid value persists and out-of-range values are rejected | Pass |
 
-The latest CI run completed all **62** tests on Python 3.12. The full output is linked above. This is evidence for those tested scenarios, not proof that every possible interleaving or environment has been tested.
+The latest CI run completed all **63** tests on Python 3.12. The full output is linked above. This is evidence for those tested scenarios, not proof that every possible interleaving or environment has been tested.
 
 ## 4. Manual browser checklist — still outstanding
 
@@ -53,6 +54,7 @@ Complete this checklist in the local application after backing up the existing d
 ## 5. Additional security/robustness checks to consider
 
 - Test database busy timeout/error handling deliberately; the code currently returns a controlled 503 response if it cannot acquire the write reservation.
+- The automated threaded tests exercise concurrent Flask test-client requests; a separately hosted WSGI-server load/concurrency run has not yet been performed.
 - Exercise more same-day movement-order and backdated-receipt combinations; the existing temporal test covers one important boundary, not every historical schedule.
 - Verify archive-vs-receipt and product-edit-vs-sale races under concurrent requests.
 - Review every database trigger/constraint and ensure a failed operation never leaves orphan rows or mismatched audit views.
