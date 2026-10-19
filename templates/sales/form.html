@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">RETAIL OPERATIONS / NEW TRANSACTION</p>
+        <h1>Record a sale</h1>
+        <p class="page-subtitle">Choose a product and quantity. WarungWise allocates available batches by FEFO, prioritising stock with the earliest expiry date.</p>
+    </div>
+    <a class="button button-secondary" href="{{ url_for('sales') }}">Back to sales</a>
+</section>
+
+<div class="sale-form-layout">
+    <section class="content-card sale-form-card">
+        <form method="post" action="{{ url_for('new_sale') }}" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if errors.get('_form') %}<div class="form-error-summary" role="alert">{{ errors['_form'] }}</div>{% endif %}
+
+            <div class="form-section-heading">
+                <h2>Transaction details</h2>
+                <p>Current product selling price is stored as a snapshot with this transaction.</p>
+            </div>
+
+            <div class="sale-form-grid">
+                <div class="form-field form-field-wide">
+                    <label for="product_id">Product <span aria-hidden="true">*</span></label>
+                    <select id="product_id" name="product_id" required data-sale-product {% if errors.get('product_id') %}aria-invalid="true" aria-describedby="product_id-error"{% endif %}>
+                        <option value="">Select a product</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}"
+                            data-unit="{{ product.unit }}"
+                            data-price="{{ product.selling_price }}"
+                            data-available="{{ product.available_quantity }}"
+                            {% if form_data.get('product_id') == product.id|string %}selected{% endif %}>
+                            {{ product.name }}{% if product.sku %} · {{ product.sku }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.get('product_id') %}<p class="field-error" id="product_id-error">{{ errors['product_id'] }}</p>{% endif %}
+                    {% if not products %}<p class="field-hint">Create a product before recording a sale.</p>{% else %}<p class="field-hint">Only active products are listed. Stock availability is checked again on submission.</p>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="business_date">Business date <span aria-hidden="true">*</span></label>
+                    <input id="business_date" name="business_date" type="date" max="{{ today }}" required value="{{ form_data.get('business_date', today) }}" {% if errors.get('business_date') %}aria-invalid="true" aria-describedby="business_date-error"{% endif %}>
+                    {% if errors.get('business_date') %}<p class="field-error" id="business_date-error">{{ errors['business_date'] }}</p>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="quantity">Quantity sold <span aria-hidden="true">*</span></label>
+                    <input id="quantity" name="quantity" type="number" min="1" step="1" inputmode="numeric" required value="{{ form_data.get('quantity', '') }}" placeholder="e.g. 3" data-sale-quantity {% if errors.get('quantity') %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}>
+                    {% if errors.get('quantity') %}<p class="field-error" id="quantity-error">{{ errors['quantity'] }}</p>{% endif %}
+                </div>
+
+                <div class="form-field form-field-wide">
+                    <label for="note">Transaction note <span class="optional-label">Optional</span></label>
+                    <textarea id="note" name="note" rows="3" maxlength="500" placeholder="Optional reference or note">{{ form_data.get('note', '') }}</textarea>
+                    {% if errors.get('note') %}<p class="field-error" id="note-error">{{ errors['note'] }}</p>{% endif %}
+                </div>
+            </div>
+
+            <div class="sale-submit-summary" aria-live="polite" data-sale-preview>
+                <div><span>Available stock</span><strong data-sale-available>Choose a product</strong></div>
+                <div><span>Captured unit price</span><strong data-sale-price>—</strong></div>
+                <div><span>Estimated gross total</span><strong data-sale-total>—</strong></div>
+            </div>
+
+            <div class="form-actions">
+                <a class="button button-secondary" href="{{ url_for('sales') }}">Cancel</a>
+                <button class="button button-primary" type="submit" {% if not products %}disabled{% endif %}>Save sale <span aria-hidden="true">→</span></button>
+            </div>
+        </form>
+    </section>
+
+    <aside class="fefo-guidance">
+        <div class="fefo-icon" aria-hidden="true">↗</div>
+        <p class="eyebrow">AUTOMATED ALLOCATION</p>
+        <h2>First expiry, first out.</h2>
+        <p>WarungWise selects eligible batches automatically. You record the sale; the system decides which batches supply it.</p>
+        <div class="fefo-step"><span>01</span><div><strong>Exclude expired stock</strong><small>Only batches that remain sellable on the selected business date are considered.</small></div></div>
+        <div class="fefo-step"><span>02</span><div><strong>Prioritise earliest expiry</strong><small>The batch with the nearest expiry is used first, then the next eligible batch if needed.</small></div></div>
+        <div class="fefo-step"><span>03</span><div><strong>Write the audit trail</strong><small>Sale, captured price, and per-batch quantity changes are committed together.</small></div></div>
+    </aside>
+</div>
+{% endblock %}
