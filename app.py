@@ -642,6 +642,336 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         flash("Product archived. Historical records have been preserved.", "success")
         return redirect(url_for("products"))
 
+
+    @app.get("/batches")
+    def batches():
+        """Show batch-level stock, expiry risk, and remaining quantities."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        query = request.args.get("q", "").strip()[:100]
+        status = request.args.get("status", "all")
+        if status not in {"all", "available", "near_expiry", "expired", "depleted"}:
+            status = "all"
+
+        try:
+            connection = database.get_db()
+            settings = connection.execute(
+                "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+            ).fetchone()
+            warning_days = int(settings["expiry_warning_days"]) if settings else 7
+            today = date.today()
+            today_iso = today.isoformat()
+            warning_end = (today + timedelta(days=warning_days)).isoformat()
+
+            conditions: list[str] = []
+            params: list[Any] = []
+            if query:
+                pattern = f"%{query}%"
+                conditions.append(
+                    "(p.name LIKE ? COLLATE NOCASE OR COALESCE(p.sku, '') LIKE ? COLLATE NOCASE "
+                    "OR CAST(b.id AS TEXT) LIKE ?)"
+                )
+                params.extend([pattern, pattern, pattern])
+
+            if status == "available":
+                conditions.append(
+                    "b.quantity_remaining > 0 AND (b.expiry_date IS NULL OR b.expiry_date > ?)"
+                )
+                params.append(warning_end)
+            elif status == "near_expiry":
+                conditions.append(
+                    "b.quantity_remaining > 0 AND b.expiry_date IS NOT NULL "
+                    "AND b.expiry_date >= ? AND b.expiry_date <= ?"
+                )
+                params.extend([today_iso, warning_end])
+            elif status == "expired":
+                conditions.append(
+                    "b.quantity_remaining > 0 AND b.expiry_date IS NOT NULL AND b.expiry_date < ?"
+                )
+                params.append(today_iso)
+            elif status == "depleted":
+                conditions.append("b.quantity_remaining = 0")
+
+            where_sql = " AND ".join(conditions) if conditions else "1 = 1"
+            batches = connection.execute(
+                f"""
+                SELECT b.id AS batch_id, b.product_id, b.received_date, b.expiry_date,
+                       b.quantity_received, b.quantity_remaining, b.unit_cost, b.created_at_utc,
+                       p.name AS product_name, p.sku, p.unit, p.tracks_expiry, p.is_archived,
+                       CASE
+                           WHEN b.quantity_remaining = 0 THEN 'depleted'
+                           WHEN b.expiry_date IS NOT NULL AND b.expiry_date < ? THEN 'expired'
+                           WHEN b.expiry_date IS NOT NULL AND b.expiry_date <= ? THEN 'near_expiry'
+                           ELSE 'available'
+                       END AS batch_status
+                FROM stock_batches AS b
+                JOIN products AS p ON p.id = b.product_id
+                WHERE {where_sql}
+                ORDER BY
+                    CASE
+                        WHEN b.quantity_remaining = 0 THEN 3
+                        WHEN b.expiry_date IS NOT NULL AND b.expiry_date < ? THEN 0
+                        WHEN b.expiry_date IS NOT NULL AND b.expiry_date <= ? THEN 1
+                        ELSE 2
+                    END,
+                    b.expiry_date ASC, b.received_date DESC, b.id DESC
+                LIMIT 300
+                """,
+                [today_iso, warning_end, *params, today_iso, warning_end],
+            ).fetchall()
+            summary_row = connection.execute(
+                """
+                SELECT COUNT(*) AS total_batches,
+                       COALESCE(SUM(CASE WHEN quantity_remaining > 0 THEN 1 ELSE 0 END), 0) AS active_batches,
+                       COALESCE(SUM(CASE WHEN quantity_remaining > 0 AND expiry_date IS NOT NULL
+                           AND expiry_date >= ? AND expiry_date <= ? THEN 1 ELSE 0 END), 0) AS near_expiry_batches,
+                       COALESCE(SUM(CASE WHEN quantity_remaining > 0 AND expiry_date IS NOT NULL
+                           AND expiry_date < ? THEN 1 ELSE 0 END), 0) AS expired_batches,
+                       COALESCE(SUM(CASE WHEN quantity_remaining = 0 THEN 1 ELSE 0 END), 0) AS depleted_batches
+                FROM stock_batches
+                """,
+                (today_iso, warning_end, today_iso),
+            ).fetchone()
+            summary = dict(summary_row)
+            summary["expiry_warning_days"] = warning_days
+        except (sqlite3.Error, FileNotFoundError):
+            current_app.logger.exception("Unable to load stock batches.")
+            return render_template(
+                "error.html", title="Stock batches unavailable", error_code=503,
+                message="Stock batches could not be loaded. Check the local database setup and try again.",
+            ), 503
+
+        return render_template(
+            "batches/index.html", title="Stock batches", batches=batches, summary=summary,
+            search_query=query, status=status, today=today_iso, warning_end=warning_end,
+        )
+
+    @app.route("/batches/new", methods=["GET", "POST"])
+    def new_batch():
+        """Receive stock into a new batch using the immutable movement ledger."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        products = connection.execute(
+            """
+            SELECT id, name, sku, unit, cost_price, tracks_expiry
+            FROM products WHERE is_archived = 0 ORDER BY name COLLATE NOCASE
+            """
+        ).fetchall()
+        today = date.today()
+        defaults = {
+            "product_id": "", "received_date": today.isoformat(), "expiry_date": "",
+            "quantity_received": "", "unit_cost": "", "note": "",
+        }
+        form_data = dict(defaults)
+        if request.method == "POST":
+            for field in form_data:
+                form_data[field] = str(request.form.get(field, "")).strip()
+
+        if request.method == "GET":
+            return render_template(
+                "batches/form.html", title="Receive stock", form_data=form_data,
+                errors={}, products=products, today=today.isoformat(),
+            )
+        if not _csrf_is_valid():
+            abort(400)
+
+        errors: dict[str, str] = {}
+        max_integer = 9_223_372_036_854_775_807
+        product = None
+        if not re.fullmatch(r"[0-9]{1,19}", form_data["product_id"]):
+            errors["product_id"] = "Choose an active product."
+        else:
+            chosen_id = int(form_data["product_id"])
+            if chosen_id > max_integer:
+                errors["product_id"] = "Choose an active product."
+            else:
+                product = connection.execute(
+                    """
+                    SELECT id, name, unit, cost_price, tracks_expiry
+                    FROM products WHERE id = ? AND is_archived = 0
+                    """,
+                    (chosen_id,),
+                ).fetchone()
+                if product is None:
+                    errors["product_id"] = (
+                        "Choose an active product. Archived or missing products cannot receive stock."
+                    )
+
+        received_date = None
+        try:
+            received_date = date.fromisoformat(form_data["received_date"])
+            if received_date.isoformat() != form_data["received_date"] or received_date > today:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["received_date"] = "Enter a valid received date that is not in the future."
+
+        expiry_date = None
+        if form_data["expiry_date"]:
+            try:
+                expiry_date = date.fromisoformat(form_data["expiry_date"])
+                if expiry_date.isoformat() != form_data["expiry_date"]:
+                    raise ValueError
+            except (TypeError, ValueError):
+                errors["expiry_date"] = "Enter a valid expiry date."
+
+        quantity = None
+        if not re.fullmatch(r"[0-9]{1,19}", form_data["quantity_received"]):
+            errors["quantity_received"] = "Quantity must be a whole number greater than zero."
+        else:
+            quantity = int(form_data["quantity_received"])
+            if quantity < 1 or quantity > max_integer:
+                errors["quantity_received"] = "Quantity must be a whole number greater than zero."
+
+        unit_cost = None
+        if not re.fullmatch(r"[0-9]{1,19}", form_data["unit_cost"]):
+            errors["unit_cost"] = "Unit cost must be a whole number of zero or more."
+        else:
+            unit_cost = int(form_data["unit_cost"])
+            if unit_cost > max_integer:
+                errors["unit_cost"] = "Unit cost must be a whole number of zero or more."
+
+        if len(form_data["note"]) > 500:
+            errors["note"] = "Use no more than 500 characters for the note."
+        if product is not None:
+            if int(product["tracks_expiry"]) == 1 and expiry_date is None:
+                errors["expiry_date"] = "An expiry date is required for this product."
+            elif int(product["tracks_expiry"]) == 0 and expiry_date is not None:
+                errors["expiry_date"] = "This product does not track expiry dates. Leave this field blank."
+        if expiry_date is not None and received_date is not None and expiry_date < received_date:
+            errors["expiry_date"] = "Expiry date cannot be earlier than the received date."
+
+        if errors:
+            return render_template(
+                "batches/form.html", title="Receive stock", form_data=form_data,
+                errors=errors, products=products, today=today.isoformat(),
+            ), 400
+
+        try:
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (operation_type, request_token, business_date, note)
+                VALUES ('receipt', ?, ?, ?)
+                """,
+                (secrets.token_urlsafe(32), received_date.isoformat(), form_data["note"] or None),
+            )
+            operation_id = cursor.lastrowid
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_batches (
+                    product_id, receipt_operation_id, received_date, expiry_date,
+                    quantity_received, quantity_remaining, unit_cost
+                )
+                VALUES (?, ?, ?, ?, ?, 0, ?)
+                """,
+                (
+                    int(product["id"]), operation_id, received_date.isoformat(),
+                    expiry_date.isoformat() if expiry_date else None, quantity, unit_cost,
+                ),
+            )
+            batch_id = cursor.lastrowid
+            connection.execute(
+                """
+                INSERT INTO stock_movements (operation_id, product_id, batch_id, quantity_delta)
+                VALUES (?, ?, ?, ?)
+                """,
+                (operation_id, int(product["id"]), batch_id, quantity),
+            )
+            connection.commit()
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            current_app.logger.exception("Stock receipt was rejected by the database.")
+            errors["_form"] = (
+                "The receipt could not be saved because it did not satisfy an inventory rule. "
+                "Review the details and try again."
+            )
+            return render_template(
+                "batches/form.html", title="Receive stock", form_data=form_data,
+                errors=errors, products=products, today=today.isoformat(),
+            ), 400
+        except sqlite3.Error:
+            connection.rollback()
+            current_app.logger.exception("Unable to save stock receipt.")
+            return render_template(
+                "error.html", title="Stock receipt unavailable", error_code=503,
+                message="The stock receipt could not be saved. No stock change was committed; try again.",
+            ), 503
+
+        flash(
+            f"Stock received: {quantity} {product['unit']} of {product['name']} recorded in batch #{batch_id}.",
+            "success",
+        )
+        return redirect(url_for("batches"))
+
+    @app.get("/movements")
+    def movements():
+        """Show an append-only view of inventory changes."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        query = request.args.get("q", "").strip()[:100]
+        operation_type = request.args.get("type", "all")
+        valid_types = {"all", "receipt", "sale", "disposal", "adjustment_in", "adjustment_out"}
+        if operation_type not in valid_types:
+            operation_type = "all"
+        conditions: list[str] = []
+        params: list[Any] = []
+        if query:
+            pattern = f"%{query}%"
+            conditions.append(
+                "(p.name LIKE ? COLLATE NOCASE OR COALESCE(p.sku, '') LIKE ? COLLATE NOCASE "
+                "OR CAST(b.id AS TEXT) LIKE ?)"
+            )
+            params.extend([pattern, pattern, pattern])
+        if operation_type != "all":
+            conditions.append("op.operation_type = ?")
+            params.append(operation_type)
+        where_sql = " AND ".join(conditions) if conditions else "1 = 1"
+
+        try:
+            connection = database.get_db()
+            rows = connection.execute(
+                f"""
+                SELECT sm.id AS movement_id, sm.quantity_delta, op.operation_type,
+                       op.occurred_at_utc, op.business_date, op.reason, op.note,
+                       p.name AS product_name, p.sku, p.unit, b.id AS batch_id, b.expiry_date
+                FROM stock_movements AS sm
+                JOIN stock_operations AS op ON op.id = sm.operation_id
+                JOIN products AS p ON p.id = sm.product_id
+                JOIN stock_batches AS b ON b.id = sm.batch_id
+                WHERE {where_sql}
+                ORDER BY op.occurred_at_utc DESC, sm.id DESC
+                LIMIT 300
+                """,
+                params,
+            ).fetchall()
+        except (sqlite3.Error, FileNotFoundError):
+            current_app.logger.exception("Unable to load stock movements.")
+            return render_template(
+                "error.html", title="Stock movements unavailable", error_code=503,
+                message="The stock movement ledger could not be loaded. Check the local database setup and try again.",
+            ), 503
+
+        labels = {
+            "receipt": "Stock received", "sale": "Sale", "disposal": "Disposal",
+            "adjustment_in": "Stock adjustment · inbound",
+            "adjustment_out": "Stock adjustment · outbound",
+        }
+        movement_rows = []
+        for row in rows:
+            item = dict(row)
+            item["operation_label"] = labels.get(item["operation_type"], "Stock movement")
+            delta = int(item["quantity_delta"])
+            item["quantity_display"] = f"+{delta}" if delta > 0 else str(delta)
+            movement_rows.append(item)
+
+        return render_template(
+            "movements/index.html", title="Stock movements", movements=movement_rows,
+            search_query=query, operation_type=operation_type,
+        )
+
     @app.get("/health")
     def health():
         """Return a small local readiness check without exposing database details."""
