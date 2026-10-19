@@ -427,6 +427,29 @@ class WarungWiseAppTests(unittest.TestCase):
 
 
 
+    def test_product_edit_and_archive_reject_missing_csrf_token(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Protected Product")
+
+        edit_response = self.client.post(
+            f"/products/{product_id}/edit",
+            data=self._product_form_values(name="Tampered Product"),
+        )
+        archive_response = self.client.post(
+            f"/products/{product_id}/archive",
+        )
+        self.assertEqual(edit_response.status_code, 400)
+        self.assertEqual(archive_response.status_code, 400)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            row = connection.execute(
+                "SELECT name, is_archived FROM products WHERE id = ?", (product_id,)
+            ).fetchone()
+            self.assertEqual(row, ("Protected Product", 0))
+        finally:
+            connection.close()
+
     def test_extremely_long_numeric_input_is_rejected(self) -> None:
         initialize_database(database_path=self.database_path)
         response = self._post_with_csrf(
