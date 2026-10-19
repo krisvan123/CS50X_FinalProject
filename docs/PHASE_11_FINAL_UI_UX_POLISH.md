@@ -1,6 +1,6 @@
 # Phase 11 — Final UI/UX Polish
 
-**Status:** Implemented; automated verification is to be checked against the commit's GitHub Actions run.  
+**Status:** Implemented and verified by [GitHub Actions on Python 3.12](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39210823544) — all 49 automated tests passed on October 19, 2026.  
 **Scope:** A consistent modern type system, a visible moving-light orbit effect, and final interface accessibility/responsiveness refinements.
 
 ## Typography
@@ -31,7 +31,7 @@ Run the existing automated test suite from the repository root:
 python -m unittest discover -s tests -v
 ```
 
-The browser-level visual checks should also cover the dashboard, Products, Stock batches, Sales, Movements, Restock advice, and Reports at desktop and narrow/mobile widths. Confirm that the orbit glow is visible, clicks remain unobstructed, focus indicators appear during keyboard navigation, and reduced-motion preferences stop animation.
+GitHub Actions run 39210823544 completed successfully on the UI implementation commit, with all 49 existing automated tests passing. The browser-level visual checks should also cover the dashboard, Products, Stock batches, Sales, Movements, Restock advice, and Reports at desktop and narrow/mobile widths. Confirm that the orbit glow is visible, clicks remain unobstructed, focus indicators appear during keyboard navigation, and reduced-motion preferences stop animation.
 
 ## AI assistance note
 
