@@ -158,7 +158,7 @@ def _fetch_inventory_snapshot(
 def _safe_csv_text(value: Any) -> str:
     """Prevent untrusted text fields from being interpreted as spreadsheet formulas."""
     text_value = "" if value is None else str(value)
-    if text_value.lstrip(" \\t\\r\\n")[:1] in {"=", "+", "-", "@", "\\t", "\\r"}:
+    if text_value.lstrip(" \t\r\n")[:1] in {"=", "+", "-", "@", "\t", "\r"}:
         return "'" + text_value
     return text_value
 
@@ -1320,7 +1320,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 today,
             )
             if period_error:
-                return Response(period_error + "\\n", status=400, mimetype="text/plain")
+                return Response(period_error + "\n", status=400, mimetype="text/plain")
 
         try:
             connection = database.get_db()
@@ -1396,7 +1396,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         csv_writer = csv.writer(output)
         csv_writer.writerow(headers)
         csv_writer.writerows(data)
-        response = Response("\\ufeff" + output.getvalue(), mimetype="text/csv")
+        response = Response("\ufeff" + output.getvalue(), mimetype="text/csv")
         response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
         response.headers["Cache-Control"] = "no-store"
         return response
