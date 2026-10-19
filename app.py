@@ -1121,12 +1121,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 FROM stock_batches
                 WHERE product_id = ?
                   AND quantity_remaining > 0
+                  AND received_date <= ?
                   AND (expiry_date IS NULL OR expiry_date >= ?)
                 ORDER BY
                     CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END,
                     expiry_date ASC, received_date ASC, id ASC
                 """,
-                (int(product["id"]), business_date.isoformat()),
+                (int(product["id"]), business_date.isoformat(), business_date.isoformat()),
             ).fetchall()
             available = sum(int(batch["quantity_remaining"]) for batch in batches)
             if quantity > available:
