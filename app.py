@@ -972,6 +972,249 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             search_query=query, operation_type=operation_type,
         )
 
+
+    @app.get("/sales")
+    def sales():
+        """List recorded sales and their captured selling prices."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        query = request.args.get("q", "").strip()[:100]
+        conditions: list[str] = []
+        params: list[Any] = []
+        if query:
+            pattern = f"%{query}%"
+            conditions.append(
+                "(p.name LIKE ? COLLATE NOCASE OR COALESCE(p.sku, '') LIKE ? COLLATE NOCASE "
+                "OR CAST(s.id AS TEXT) LIKE ?)"
+            )
+            params.extend([pattern, pattern, pattern])
+        where_sql = " AND ".join(conditions) if conditions else "1 = 1"
+
+        try:
+            connection = database.get_db()
+            rows = connection.execute(
+                f"""
+                SELECT s.id AS sale_id, op.business_date, op.occurred_at_utc,
+                       op.note, p.name AS product_name, p.sku, p.unit,
+                       si.quantity, si.unit_selling_price,
+                       si.quantity * si.unit_selling_price AS line_total
+                FROM sales AS s
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                JOIN sale_items AS si ON si.sale_id = s.id
+                JOIN products AS p ON p.id = si.product_id
+                WHERE {where_sql}
+                ORDER BY op.occurred_at_utc DESC, s.id DESC
+                LIMIT 250
+                """,
+                params,
+            ).fetchall()
+            summary = connection.execute(
+                """
+                SELECT
+                    COUNT(DISTINCT s.id) AS transaction_count,
+                    COALESCE(SUM(si.quantity * si.unit_selling_price), 0) AS gross_revenue,
+                    COALESCE(SUM(CASE WHEN op.business_date = ? THEN 1 ELSE 0 END), 0) AS today_count,
+                    COALESCE(SUM(CASE WHEN op.business_date = ?
+                        THEN si.quantity * si.unit_selling_price ELSE 0 END), 0) AS today_revenue
+                FROM sales AS s
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                JOIN sale_items AS si ON si.sale_id = s.id
+                """,
+                (date.today().isoformat(), date.today().isoformat()),
+            ).fetchone()
+        except (sqlite3.Error, FileNotFoundError):
+            current_app.logger.exception("Unable to load sales history.")
+            return render_template(
+                "error.html", title="Sales history unavailable", error_code=503,
+                message="Sales history could not be loaded. Check the local database setup and try again.",
+            ), 503
+
+        return render_template(
+            "sales/index.html", title="Sales history", sales=rows,
+            summary=dict(summary), search_query=query,
+        )
+
+    @app.route("/sales/new", methods=["GET", "POST"])
+    def new_sale():
+        """Record one product sale and allocate stock using FEFO."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        today = date.today()
+        products = connection.execute(
+            """
+            SELECT p.id, p.name, p.sku, p.unit, p.selling_price, p.tracks_expiry,
+                   COALESCE((
+                       SELECT SUM(b.quantity_remaining)
+                       FROM stock_batches AS b
+                       WHERE b.product_id = p.id AND b.quantity_remaining > 0
+                         AND (b.expiry_date IS NULL OR b.expiry_date >= ?)
+                   ), 0) AS available_quantity
+            FROM products AS p
+            WHERE p.is_archived = 0
+            ORDER BY p.name COLLATE NOCASE
+            """,
+            (today.isoformat(),),
+        ).fetchall()
+        form_data = {
+            "product_id": "", "business_date": today.isoformat(),
+            "quantity": "", "note": "",
+        }
+        if request.method == "POST":
+            for field in form_data:
+                form_data[field] = str(request.form.get(field, "")).strip()
+        if request.method == "GET":
+            return render_template(
+                "sales/form.html", title="Record a sale", products=products,
+                form_data=form_data, errors={}, today=today.isoformat(),
+            )
+        if not _csrf_is_valid():
+            abort(400)
+
+        errors: dict[str, str] = {}
+        max_integer = 9_223_372_036_854_775_807
+        product = None
+        product_raw = form_data["product_id"]
+        if not re.fullmatch(r"[0-9]{1,19}", product_raw):
+            errors["product_id"] = "Choose an active product."
+        else:
+            product_id = int(product_raw)
+            if product_id > max_integer:
+                errors["product_id"] = "Choose an active product."
+            else:
+                product = connection.execute(
+                    """
+                    SELECT id, name, unit, selling_price
+                    FROM products WHERE id = ? AND is_archived = 0
+                    """,
+                    (product_id,),
+                ).fetchone()
+                if product is None:
+                    errors["product_id"] = "Choose an active product. Archived products cannot be sold."
+
+        business_date = None
+        try:
+            business_date = date.fromisoformat(form_data["business_date"])
+            if business_date.isoformat() != form_data["business_date"] or business_date > today:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["business_date"] = "Enter a valid business date that is not in the future."
+
+        quantity = None
+        if not re.fullmatch(r"[0-9]{1,19}", form_data["quantity"]):
+            errors["quantity"] = "Quantity must be a whole number greater than zero."
+        else:
+            quantity = int(form_data["quantity"])
+            if quantity < 1 or quantity > max_integer:
+                errors["quantity"] = "Quantity must be a whole number greater than zero."
+
+        if len(form_data["note"]) > 500:
+            errors["note"] = "Use no more than 500 characters for the note."
+
+        allocations: list[tuple[int, int]] = []
+        if product is not None and business_date is not None and quantity is not None and quantity > 0:
+            batches = connection.execute(
+                """
+                SELECT id, quantity_remaining
+                FROM stock_batches
+                WHERE product_id = ?
+                  AND quantity_remaining > 0
+                  AND (expiry_date IS NULL OR expiry_date >= ?)
+                ORDER BY
+                    CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END,
+                    expiry_date ASC, received_date ASC, id ASC
+                """,
+                (int(product["id"]), business_date.isoformat()),
+            ).fetchall()
+            available = sum(int(batch["quantity_remaining"]) for batch in batches)
+            if quantity > available:
+                errors["_form"] = (
+                    f"Not enough sellable stock for this date. "
+                    f"Available quantity: {available} {product['unit']}."
+                )
+            else:
+                quantity_left = quantity
+                for batch in batches:
+                    allocation = min(quantity_left, int(batch["quantity_remaining"]))
+                    if allocation > 0:
+                        allocations.append((int(batch["id"]), allocation))
+                        quantity_left -= allocation
+                    if quantity_left == 0:
+                        break
+
+        if errors:
+            return render_template(
+                "sales/form.html", title="Record a sale", products=products,
+                form_data=form_data, errors=errors, today=today.isoformat(),
+            ), 400
+
+        try:
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (operation_type, request_token, business_date, note)
+                VALUES ('sale', ?, ?, ?)
+                """,
+                (
+                    secrets.token_urlsafe(32), business_date.isoformat(),
+                    form_data["note"] or None,
+                ),
+            )
+            operation_id = cursor.lastrowid
+            cursor = connection.execute(
+                "INSERT INTO sales (operation_id) VALUES (?)",
+                (operation_id,),
+            )
+            sale_id = cursor.lastrowid
+            cursor = connection.execute(
+                """
+                INSERT INTO sale_items (sale_id, product_id, quantity, unit_selling_price)
+                VALUES (?, ?, ?, ?)
+                """,
+                (sale_id, int(product["id"]), quantity, int(product["selling_price"])),
+            )
+            sale_item_id = cursor.lastrowid
+            for batch_id, allocated_quantity in allocations:
+                connection.execute(
+                    """
+                    INSERT INTO stock_movements (
+                        operation_id, product_id, batch_id, sale_item_id, quantity_delta
+                    )
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        operation_id, int(product["id"]), batch_id,
+                        sale_item_id, -allocated_quantity,
+                    ),
+                )
+            connection.commit()
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            current_app.logger.exception("Sale was rejected by the database.")
+            errors["_form"] = (
+                "The sale could not be saved because an inventory rule was not satisfied. "
+                "No stock was changed; review the details and try again."
+            )
+            return render_template(
+                "sales/form.html", title="Record a sale", products=products,
+                form_data=form_data, errors=errors, today=today.isoformat(),
+            ), 400
+        except sqlite3.Error:
+            connection.rollback()
+            current_app.logger.exception("Unable to save sale.")
+            return render_template(
+                "error.html", title="Sale could not be saved", error_code=503,
+                message="The sale could not be saved. No stock change was committed; try again.",
+            ), 503
+
+        total = int(quantity) * int(product["selling_price"])
+        flash(
+            f"Sale #{sale_id} recorded: {quantity} {product['unit']} of {product['name']} for Rp {total:,}.",
+            "success",
+        )
+        return redirect(url_for("sales"))
+
     @app.get("/health")
     def health():
         """Return a small local readiness check without exposing database details."""
