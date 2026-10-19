@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">INVENTORY CONTROL / STOCK INTAKE</p>
+        <h1>Receive stock</h1>
+        <p class="page-subtitle">Record a delivery as a new batch. Quantity, cost, and expiry details are saved with the stock movement history.</p>
+    </div>
+    <a class="button button-secondary" href="{{ url_for('batches') }}">Back to batches</a>
+</section>
+
+<div class="batch-form-layout">
+    <section class="content-card batch-form-card">
+        <form method="post" action="{{ url_for('new_batch') }}" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if errors.get('_form') %}<div class="form-error-summary" role="alert">{{ errors['_form'] }}</div>{% endif %}
+
+            <div class="form-section-heading">
+                <h2>Delivery details</h2>
+                <p>Select the product, then enter the quantities received from this delivery.</p>
+            </div>
+
+            <div class="batch-form-grid">
+                <div class="form-field form-field-wide">
+                    <label for="product_id">Product <span aria-hidden="true">*</span></label>
+                    <select id="product_id" name="product_id" required {% if errors.get('product_id') %}aria-invalid="true" aria-describedby="product_id-error"{% endif %}>
+                        <option value="">Choose a product</option>
+                        {% for product in products %}
+                        <option value="{{ product.id }}" data-unit="{{ product.unit }}" data-cost="{{ product.cost_price }}" data-tracks-expiry="{{ product.tracks_expiry }}" {% if form_data.get('product_id') == product.id|string %}selected{% endif %}>
+                            {{ product.name }}{% if product.sku %} · {{ product.sku }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.get('product_id') %}<p class="field-error" id="product_id-error">{{ errors['product_id'] }}</p>{% endif %}
+                    {% if not products %}<p class="field-hint">No active products are available. <a href="{{ url_for('new_product') }}">Create a product</a> before receiving stock.</p>{% else %}<p class="field-hint">Only active products can receive new stock.</p>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="received_date">Received date <span aria-hidden="true">*</span></label>
+                    <input id="received_date" name="received_date" type="date" max="{{ today }}" required value="{{ form_data.get('received_date', today) }}" {% if errors.get('received_date') %}aria-invalid="true" aria-describedby="received_date-error"{% endif %}>
+                    {% if errors.get('received_date') %}<p class="field-error" id="received_date-error">{{ errors['received_date'] }}</p>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="quantity_received">Quantity received <span aria-hidden="true">*</span></label>
+                    <input id="quantity_received" name="quantity_received" type="number" min="1" step="1" inputmode="numeric" required value="{{ form_data.get('quantity_received', '') }}" placeholder="e.g. 24" {% if errors.get('quantity_received') %}aria-invalid="true" aria-describedby="quantity_received-error"{% endif %}>
+                    {% if errors.get('quantity_received') %}<p class="field-error" id="quantity_received-error">{{ errors['quantity_received'] }}</p>{% endif %}
+                </div>
+
+                <div class="form-field">
+                    <label for="unit_cost">Unit cost (IDR) <span aria-hidden="true">*</span></label>
+                    <input id="unit_cost" name="unit_cost" type="number" min="0" step="1" inputmode="numeric" required value="{{ form_data.get('unit_cost', '') }}" placeholder="e.g. 2500" {% if errors.get('unit_cost') %}aria-invalid="true" aria-describedby="unit_cost-error"{% endif %}>
+                    {% if errors.get('unit_cost') %}<p class="field-error" id="unit_cost-error">{{ errors['unit_cost'] }}</p>{% endif %}
+                    <p class="field-hint">Use the cost for this delivery. It may differ from the current product cost.</p>
+                </div>
+
+                <div class="form-field">
+                    <label for="expiry_date">Expiry date</label>
+                    <input id="expiry_date" name="expiry_date" type="date" value="{{ form_data.get('expiry_date', '') }}" {% if errors.get('expiry_date') %}aria-invalid="true" aria-describedby="expiry_date-error"{% endif %}>
+                    {% if errors.get('expiry_date') %}<p class="field-error" id="expiry_date-error">{{ errors['expiry_date'] }}</p>{% endif %}
+                    <p class="field-hint">Required for expiry-tracked products; otherwise leave blank.</p>
+                </div>
+
+                <div class="form-field form-field-wide">
+                    <label for="note">Delivery note <span class="optional-label">Optional</span></label>
+                    <textarea id="note" name="note" rows="3" maxlength="500" placeholder="Receipt reference or useful context">{{ form_data.get('note', '') }}</textarea>
+                    {% if errors.get('note') %}<p class="field-error" id="note-error">{{ errors['note'] }}</p>{% endif %}
+                    <p class="field-hint">Up to 500 characters. This note is saved with the receipt record.</p>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a class="button button-secondary" href="{{ url_for('batches') }}">Cancel</a>
+                <button class="button button-primary" type="submit" {% if not products %}disabled{% endif %}>Save stock receipt <span aria-hidden="true">→</span></button>
+            </div>
+        </form>
+    </section>
+
+    <aside class="receipt-guidance">
+        <div class="receipt-guidance-icon" aria-hidden="true">✓</div>
+        <p class="eyebrow">BUILT-IN SAFEGUARDS</p>
+        <h2>Every delivery stays traceable.</h2>
+        <p>Saving this form creates a batch and a linked stock movement in one database transaction.</p>
+        <div class="receipt-rule"><span>01</span><div><strong>No silent stock edits</strong><small>The stock balance changes through the ledger, not by directly overwriting quantity.</small></div></div>
+        <div class="receipt-rule"><span>02</span><div><strong>Expiry follows the product</strong><small>Expiry dates are required only when the product is configured to track them.</small></div></div>
+        <div class="receipt-rule"><span>03</span><div><strong>History is retained</strong><small>Every batch has its own receipt date, quantity, and unit cost for future reporting.</small></div></div>
+    </aside>
+</div>
+{% endblock %}
