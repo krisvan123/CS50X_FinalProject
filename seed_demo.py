@@ -216,7 +216,7 @@ def _already_seeded(connection: sqlite3.Connection) -> bool:
     return (
         skus == expected_skus
         and len(skus) == len(DEMO_PRODUCTS)
-        and len(tokens) == len(DEMO_PRODUCTS) + len(DEMO_SALES) + 2
+        and len(tokens) == expected_batches + len(DEMO_SALES) + 2
         and all(token.startswith("demo-") for token in tokens)
         and _table_count(connection, "stock_batches") == expected_batches
         and _table_count(connection, "sales") == len(DEMO_SALES)
