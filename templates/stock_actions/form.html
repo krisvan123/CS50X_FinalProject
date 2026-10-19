@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">INVENTORY CONTROL / AUDITABLE CHANGES</p>
+        <h1>Waste & stock corrections</h1>
+        <p class="page-subtitle">Record damaged or expired goods, or correct a physical count against an existing batch. Every change requires an explanation and creates an immutable movement record.</p>
+    </div>
+    <a class="button button-secondary" href="{{ url_for('movements') }}">Back to movement ledger</a>
+</section>
+<div class="batch-form-layout">
+    <section class="content-card batch-form-card">
+        <form method="post" action="{{ url_for('new_stock_action') }}" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="request_token" value="{{ request_token }}">
+            {% if errors.get('_form') %}<div class="form-error-summary" role="alert">{{ errors['_form'] }}</div>{% endif %}
+            <div class="form-section-heading">
+                <h2>Stock action details</h2>
+                <p>Choose the action carefully. New deliveries must be recorded as new batches.</p>
+            </div>
+            <div class="batch-form-grid">
+                <div class="form-field form-field-wide">
+                    <label for="operation_type">Action type <span aria-hidden="true">*</span></label>
+                    <select id="operation_type" name="operation_type" required {% if errors.get('operation_type') %}aria-invalid="true" aria-describedby="operation_type-error"{% endif %}>
+                        <option value="disposal" {% if form_data.get('operation_type') == 'disposal' %}selected{% endif %}>Dispose damaged, expired, or unsellable goods</option>
+                        <option value="adjustment_out" {% if form_data.get('operation_type') == 'adjustment_out' %}selected{% endif %}>Correct stock count — quantity is lower</option>
+                        <option value="adjustment_in" {% if form_data.get('operation_type') == 'adjustment_in' %}selected{% endif %}>Correct stock count — quantity is higher</option>
+                    </select>
+                    {% if errors.get('operation_type') %}<p class="field-error" id="operation_type-error">{{ errors['operation_type'] }}</p>{% endif %}
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="batch_id">Existing batch <span aria-hidden="true">*</span></label>
+                    <select id="batch_id" name="batch_id" required {% if errors.get('batch_id') %}aria-invalid="true" aria-describedby="batch_id-error"{% endif %}>
+                        <option value="">Choose a batch</option>
+                        {% for batch in batches %}
+                        <option value="{{ batch.batch_id }}" {% if form_data.get('batch_id') == batch.batch_id|string %}selected{% endif %}>
+                            {{ batch.product_name }} · #{{ "%05d"|format(batch.batch_id) }} · remaining {{ batch.quantity_remaining }} {{ batch.unit }}{% if batch.expiry_date %} · expires {{ batch.expiry_date }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if errors.get('batch_id') %}<p class="field-error" id="batch_id-error">{{ errors['batch_id'] }}</p>{% endif %}
+                    {% if not batches %}<p class="field-hint">No batches belonging to active products are available. Receive stock first.</p>{% else %}<p class="field-hint">Choose the exact batch whose physical stock is being disposed of or counted.</p>{% endif %}
+                </div>
+                <div class="form-field">
+                    <label for="business_date">Action date <span aria-hidden="true">*</span></label>
+                    <input id="business_date" name="business_date" type="date" max="{{ today }}" required value="{{ form_data.get('business_date', today) }}" {% if errors.get('business_date') %}aria-invalid="true" aria-describedby="business_date-error"{% endif %}>
+                    {% if errors.get('business_date') %}<p class="field-error" id="business_date-error">{{ errors['business_date'] }}</p>{% endif %}
+                </div>
+                <div class="form-field">
+                    <label for="quantity">Quantity <span aria-hidden="true">*</span></label>
+                    <input id="quantity" name="quantity" type="number" min="1" step="1" inputmode="numeric" required value="{{ form_data.get('quantity', '') }}" placeholder="e.g. 2" {% if errors.get('quantity') %}aria-invalid="true" aria-describedby="quantity-error"{% endif %}>
+                    {% if errors.get('quantity') %}<p class="field-error" id="quantity-error">{{ errors['quantity'] }}</p>{% endif %}
+                    <p class="field-hint">Enter a positive whole number. Stock availability is checked again on submission.</p>
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="reason">Reason <span aria-hidden="true">*</span></label>
+                    <input id="reason" name="reason" type="text" maxlength="200" required value="{{ form_data.get('reason', '') }}" placeholder="e.g. Expired goods, damaged packaging, physical count discrepancy" {% if errors.get('reason') %}aria-invalid="true" aria-describedby="reason-error"{% endif %}>
+                    {% if errors.get('reason') %}<p class="field-error" id="reason-error">{{ errors['reason'] }}</p>{% endif %}
+                    <p class="field-hint">Required for auditability. A stock-count correction is not a new delivery.</p>
+                </div>
+                <div class="form-field form-field-wide">
+                    <label for="note">Additional note <span class="optional-label">Optional</span></label>
+                    <textarea id="note" name="note" rows="3" maxlength="500" placeholder="Optional context or reference">{{ form_data.get('note', '') }}</textarea>
+                    {% if errors.get('note') %}<p class="field-error" id="note-error">{{ errors['note'] }}</p>{% endif %}
+                </div>
+            </div>
+            <div class="form-actions">
+                <a class="button button-secondary" href="{{ url_for('movements') }}">Cancel</a>
+                <button class="button button-primary" type="submit" {% if not batches %}disabled{% endif %}>Save stock action <span aria-hidden="true">→</span></button>
+            </div>
+        </form>
+    </section>
+    <aside class="receipt-guidance">
+        <div class="receipt-guidance-icon" aria-hidden="true">✓</div>
+        <p class="eyebrow">LEDGER-FIRST INVENTORY</p>
+        <h2>Every correction must be explainable.</h2>
+        <p>Batch balances change through stock movements; the reason remains in the audit trail.</p>
+        <div class="receipt-rule"><span>01</span><div><strong>Dispose only what remains</strong><small>Disposal and outbound correction cannot exceed the batch's remaining quantity.</small></div></div>
+        <div class="receipt-rule"><span>02</span><div><strong>Correct, do not rewrite</strong><small>Inbound corrections apply to an existing batch. Original receipt details are preserved.</small></div></div>
+        <div class="receipt-rule"><span>03</span><div><strong>Keep the reason</strong><small>Recorded disposal value uses the saved batch unit cost, not an expiry estimate.</small></div></div>
+    </aside>
+</div>
+{% endblock %}

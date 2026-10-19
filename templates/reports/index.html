@@ -64,7 +64,7 @@
     </a>
 </section>
 
-<section class="report-summary-grid" aria-label="Sales summary for selected period">
+<section class="report-summary-grid" aria-label="Business summary for selected period">
     <article class="report-summary-card report-summary-revenue">
         <span class="report-summary-top">GROSS REVENUE</span>
         <span class="report-summary-symbol" aria-hidden="true">↗</span>
@@ -88,6 +88,12 @@
         <span class="report-summary-symbol" aria-hidden="true">◷</span>
         <strong class="report-summary-count">{{ current_inventory.expired_batches + current_inventory.near_expiry_batches }}</strong>
         <small>Expired or due within {{ warning_days }} days</small>
+    </article>
+    <article class="report-summary-card report-summary-disposal">
+        <span class="report-summary-top">RECORDED DISPOSAL VALUE</span>
+        <span class="report-summary-symbol" aria-hidden="true">−</span>
+        <strong>{{ summary.recorded_disposal_value|idr }}</strong>
+        <small>Disposed quantity × recorded batch cost</small>
     </article>
 </section>
 
@@ -223,5 +229,5 @@
     {% endif %}
 </section>
 
-<p class="report-disclaimer">Reports reflect currently recorded data. Gross revenue is not profit. The inventory snapshot shows current batch balances; historical inventory snapshots are not reconstructed. Disposals can only be reported once recorded through a supported stock-disposal workflow.</p>
+<p class="report-disclaimer">Reports reflect currently recorded data. Gross revenue is not profit. Recorded disposal value is the cost basis of explicitly recorded disposal movements, not estimated expiry loss and not net profit. The inventory snapshot shows current batch balances; historical inventory snapshots are not reconstructed.</p>
 {% endblock %}

@@ -67,7 +67,7 @@
                     <td><strong class="table-primary-text">{{ movement.product_name }}</strong><small>Batch #{{ "%05d"|format(movement.batch_id) }} · {{ movement.unit }}{% if movement.expiry_date %} · Exp. {{ movement.expiry_date }}{% endif %}</small></td>
                     <td>{{ movement.business_date }}</td>
                     <td><strong class="quantity-change {% if movement.quantity_delta > 0 %}quantity-positive{% else %}quantity-negative{% endif %}">{{ movement.quantity_display }}</strong> <span class="unit-caption">{{ movement.unit }}</span></td>
-                    <td><span class="movement-note">{{ movement.note or movement.reason or "—" }}</span></td>
+                    <td><span class="movement-note">{{ movement.reason or movement.note or "—" }}</span></td>
                 </tr>
                 {% else %}
                 <tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon" aria-hidden="true">⇄</span><strong>No stock movements found</strong><p>{% if search_query or operation_type != "all" %}Try changing the search or movement type.{% else %}When you receive a delivery, its receipt and quantity change will be recorded here automatically.{% endif %}</p>{% if not search_query and operation_type == "all" %}<a class="button button-primary" href="{{ url_for('new_batch') }}">Record a stock receipt</a>{% endif %}</div></td></tr>

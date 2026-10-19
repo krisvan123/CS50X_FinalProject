@@ -2545,7 +2545,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 
 .report-summary-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 13px;
     margin-bottom: 18px;
 }
@@ -2819,4 +2819,19 @@ code.ww-identifier {
     .report-date-form input, .report-date-form select {
         transition: none !important;
     }
+}
+
+/* Recorded disposal cost summary and workspace settings. */
+.report-summary-disposal { border-color: #f0e2cf; background: linear-gradient(145deg, #fffaf3, #fff); }
+.report-summary-disposal > strong { color: #875c24; }
+.report-summary-disposal .report-summary-symbol { background: #fff0d9; color: #a66b20; }
+.settings-panel { max-width: 860px; padding: clamp(20px, 3vw, 30px); }
+.settings-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, .65fr); gap: 18px; align-items: end; }
+.settings-form .form-actions { grid-column: 1 / -1; margin-top: 0; }
+.settings-current { display: flex; flex-direction: column; gap: 5px; padding: 15px 16px; border: 1px solid #dfeae2; border-radius: 13px; background: #f8fbf8; }
+.settings-current span { color: #849188; font-size: 10px; font-weight: 750; letter-spacing: .5px; text-transform: uppercase; }
+.settings-current strong { color: #285b3e; font-size: 20px; }
+@media (max-width: 767.98px) {
+    .settings-form { grid-template-columns: minmax(0, 1fr); }
+    .settings-form .form-actions { grid-column: auto; }
 }

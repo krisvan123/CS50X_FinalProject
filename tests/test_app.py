@@ -122,6 +122,9 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertIsNotNone(match, "Expected the form page to include a CSRF token.")
         payload = dict(values)
         payload["csrf_token"] = match.group(1).decode("ascii")
+        request_match = re.search(rb'name="request_token"\s+value="([^"]+)"', page.data)
+        if request_match and "request_token" not in payload:
+            payload["request_token"] = request_match.group(1).decode("ascii")
         return self.client.post(post_path, data=payload, follow_redirects=follow_redirects)
 
     def _create_product(self, **overrides: str) -> int:
@@ -1062,6 +1065,166 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[1][1], "'=2+2")
         self.assertEqual(rows[1][2], "'=SKU-1")
+
+
+    def test_stock_receipt_duplicate_submission_uses_same_request_token(self) -> None:
+        product_id = self._create_product()
+        from datetime import date
+
+        form = self.client.get("/batches/new")
+        self.assertEqual(form.status_code, 200)
+        csrf = re.search(rb'name="csrf_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        token = re.search(rb'name="request_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        payload = {
+            "csrf_token": csrf, "request_token": token, "product_id": str(product_id),
+            "received_date": date.today().isoformat(), "expiry_date": "",
+            "quantity_received": "4", "unit_cost": "1250", "note": "One delivery",
+        }
+        self.assertEqual(self.client.post("/batches/new", data=payload).status_code, 302)
+        self.assertEqual(self.client.post("/batches/new", data=payload).status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_operations WHERE request_token = ?", (token,)).fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0], 4)
+        finally:
+            connection.close()
+
+    def test_sale_duplicate_submission_does_not_decrement_stock_twice(self) -> None:
+        from datetime import date
+
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        form = self.client.get("/sales/new")
+        self.assertEqual(form.status_code, 200)
+        csrf = re.search(rb'name="csrf_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        token = re.search(rb'name="request_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        payload = {
+            "csrf_token": csrf, "request_token": token, "product_id": str(product_id),
+            "business_date": date.today().isoformat(), "quantity": "2", "note": "One checkout",
+        }
+        self.assertEqual(self.client.post("/sales/new", data=payload).status_code, 302)
+        self.assertEqual(self.client.post("/sales/new", data=payload).status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sales").fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0], 3)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_movements WHERE quantity_delta < 0").fetchone()[0], 1)
+        finally:
+            connection.close()
+
+    def _post_stock_action(self, batch_id: int, **overrides: str):
+        from datetime import date
+        values = {
+            "batch_id": str(batch_id), "operation_type": "disposal",
+            "business_date": date.today().isoformat(), "quantity": "1",
+            "reason": "Expired goods", "note": "",
+        }
+        values.update(overrides)
+        return self._post_with_csrf("/stock-actions/new", "/stock-actions/new", values)
+
+    def test_disposal_reduces_batch_and_records_reason_and_cost_basis(self) -> None:
+        from datetime import date
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute("SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0]
+        finally:
+            connection.close()
+
+        response = self._post_stock_action(batch_id, quantity="2", reason="Expired goods")
+        self.assertEqual(response.status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)).fetchone()[0], 3)
+            row = connection.execute(
+                """
+                SELECT op.operation_type, op.reason, sm.quantity_delta
+                FROM stock_movements sm JOIN stock_operations op ON op.id = sm.operation_id
+                WHERE sm.batch_id = ? AND op.operation_type = 'disposal'
+                """, (batch_id,),
+            ).fetchone()
+            self.assertEqual(row, ("disposal", "Expired goods", -2))
+            audit = connection.execute("SELECT difference, receipt_difference FROM v_batch_balance_audit WHERE batch_id = ?", (batch_id,)).fetchone()
+            self.assertEqual(audit, (0, 0))
+        finally:
+            connection.close()
+        report = self.client.get("/reports", query_string={"start_date": date.today().isoformat(), "end_date": date.today().isoformat()})
+        self.assertEqual(report.status_code, 200)
+        self.assertIn(b"Recorded disposal value", report.data)
+        self.assertIn(b"Rp 2.000", report.data)
+
+    def test_stock_count_inbound_and_outbound_corrections_are_auditable(self) -> None:
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute("SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(self._post_stock_action(batch_id, operation_type="adjustment_in", quantity="3", reason="Physical count found extra stock").status_code, 302)
+        self.assertEqual(self._post_stock_action(batch_id, operation_type="adjustment_out", quantity="2", reason="Damaged during count").status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)).fetchone()[0], 6)
+            ledger = connection.execute(
+                """
+                SELECT op.operation_type, sm.quantity_delta, op.reason
+                FROM stock_movements sm JOIN stock_operations op ON op.id = sm.operation_id
+                WHERE sm.batch_id = ? AND op.operation_type IN ('adjustment_in', 'adjustment_out')
+                ORDER BY sm.id
+                """, (batch_id,),
+            ).fetchall()
+            self.assertEqual(ledger, [("adjustment_in", 3, "Physical count found extra stock"), ("adjustment_out", -2, "Damaged during count")])
+            self.assertEqual(connection.execute("SELECT difference FROM v_batch_balance_audit WHERE batch_id = ?", (batch_id,)).fetchone()[0], 0)
+        finally:
+            connection.close()
+
+    def test_disposal_cannot_overdraw_batch_and_requires_reason(self) -> None:
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute("SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0]
+        finally:
+            connection.close()
+        overdraw = self._post_stock_action(batch_id, quantity="6", reason="Too much")
+        self.assertEqual(overdraw.status_code, 400)
+        self.assertIn(b"Only 5", overdraw.data)
+        missing_reason = self._post_stock_action(batch_id, quantity="1", reason="   ")
+        self.assertEqual(missing_reason.status_code, 400)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)).fetchone()[0], 5)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_operations WHERE operation_type = 'disposal'").fetchone()[0], 0)
+        finally:
+            connection.close()
+
+    def test_expiry_warning_window_can_be_changed_in_settings(self) -> None:
+        initialize_database(database_path=self.database_path)
+        page = self.client.get("/settings")
+        self.assertEqual(page.status_code, 200)
+        token = re.search(rb'name="csrf_token"\s+value="([^"]+)"', page.data).group(1).decode()
+        response = self.client.post("/settings", data={"csrf_token": token, "expiry_warning_days": "14"})
+        self.assertEqual(response.status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT expiry_warning_days FROM app_settings WHERE id = 1").fetchone()[0], 14)
+        finally:
+            connection.close()
+
+    def test_settings_reject_invalid_expiry_warning_window(self) -> None:
+        initialize_database(database_path=self.database_path)
+        page = self.client.get("/settings")
+        token = re.search(rb'name="csrf_token"\s+value="([^"]+)"', page.data).group(1).decode()
+        response = self.client.post("/settings", data={"csrf_token": token, "expiry_warning_days": "999"})
+        self.assertEqual(response.status_code, 400)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute("SELECT expiry_warning_days FROM app_settings WHERE id = 1").fetchone()[0], 30)
+        finally:
+            connection.close()
 
     def test_reports_reject_invalid_date_ranges_and_unknown_exports(self) -> None:
         from datetime import date, timedelta

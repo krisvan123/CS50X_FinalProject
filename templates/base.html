@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='9') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='10') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -45,6 +45,10 @@
                 <span class="nav-icon" aria-hidden="true">▣</span>
                 <span>Stock batches</span>
             </a>
+            <a class="nav-item {% if request.endpoint == 'new_stock_action' %}active{% endif %}" href="{{ url_for('new_stock_action') }}" {% if request.endpoint == 'new_stock_action' %}aria-current="page"{% endif %}>
+                <span class="nav-icon" aria-hidden="true">↘</span>
+                <span>Waste & corrections</span>
+            </a>
             <a class="nav-item {% if request.endpoint in ('sales', 'new_sale') %}active{% endif %}" href="{{ url_for('sales') }}" {% if request.endpoint in ('sales', 'new_sale') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">↗</span>
                 <span>Sales</span>
@@ -52,6 +56,10 @@
             <a class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}" href="{{ url_for('recommendations') }}" {% if request.endpoint == 'recommendations' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">◎</span>
                 <span>Restock advice</span>
+            </a>
+            <a class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>
+                <span class="nav-icon" aria-hidden="true">⚙</span>
+                <span>Settings</span>
             </a>
             <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">⇄</span>

@@ -970,16 +970,31 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "quantity_received": "", "unit_cost": "", "note": "",
         }
         form_data = dict(defaults)
+        request_token = secrets.token_urlsafe(32)
         if request.method == "POST":
             for field in form_data:
                 form_data[field] = str(request.form.get(field, "")).strip()
+            request_token = str(request.form.get("request_token", "")).strip()
 
         if request.method == "GET":
             return render_template(
                 "batches/form.html", title="Receive stock", form_data=form_data,
                 errors={}, products=products, today=today.isoformat(),
+                request_token=request_token,
             )
         if not _csrf_is_valid():
+            abort(400)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", request_token):
+            abort(400)
+
+        existing_operation = connection.execute(
+            "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+            (request_token,),
+        ).fetchone()
+        if existing_operation is not None:
+            if existing_operation["operation_type"] == "receipt":
+                flash("This stock receipt was already processed. No duplicate receipt was created.", "info")
+                return redirect(url_for("batches"))
             abort(400)
 
         errors: dict[str, str] = {}
@@ -1051,6 +1066,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return render_template(
                 "batches/form.html", title="Receive stock", form_data=form_data,
                 errors=errors, products=products, today=today.isoformat(),
+                request_token=request_token,
             ), 400
 
         try:
@@ -1059,7 +1075,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 INSERT INTO stock_operations (operation_type, request_token, business_date, note)
                 VALUES ('receipt', ?, ?, ?)
                 """,
-                (secrets.token_urlsafe(32), received_date.isoformat(), form_data["note"] or None),
+                (request_token, received_date.isoformat(), form_data["note"] or None),
             )
             operation_id = cursor.lastrowid
             cursor = connection.execute(
@@ -1086,6 +1102,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             connection.commit()
         except sqlite3.IntegrityError:
             connection.rollback()
+            duplicate = connection.execute(
+                "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+                (request_token,),
+            ).fetchone()
+            if duplicate is not None and duplicate["operation_type"] == "receipt":
+                flash("This stock receipt was already processed. No duplicate receipt was created.", "info")
+                return redirect(url_for("batches"))
             current_app.logger.exception("Stock receipt was rejected by the database.")
             errors["_form"] = (
                 "The receipt could not be saved because it did not satisfy an inventory rule. "
@@ -1094,6 +1117,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return render_template(
                 "batches/form.html", title="Receive stock", form_data=form_data,
                 errors=errors, products=products, today=today.isoformat(),
+                request_token=request_token,
             ), 400
         except sqlite3.Error:
             connection.rollback()
@@ -1193,6 +1217,17 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 """,
                 (start_iso, end_iso),
             ).fetchone()["total"]
+            disposal_value = connection.execute(
+                """
+                SELECT COALESCE(SUM(ABS(sm.quantity_delta) * b.unit_cost), 0) AS total
+                FROM stock_movements AS sm
+                JOIN stock_operations AS op ON op.id = sm.operation_id
+                JOIN stock_batches AS b ON b.id = sm.batch_id
+                WHERE op.operation_type = 'disposal'
+                  AND op.business_date >= ? AND op.business_date <= ?
+                """,
+                (start_iso, end_iso),
+            ).fetchone()["total"]
             settings = connection.execute(
                 "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
             ).fetchone()
@@ -1265,6 +1300,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         summary["transaction_count"] = int(summary["transaction_count"] or 0)
         summary["units_sold"] = int(summary["units_sold"] or 0)
         summary["gross_revenue"] = int(summary["gross_revenue"] or 0)
+        summary["recorded_disposal_value"] = int(disposal_value or 0)
         current_inventory = dict(inventory_summary)
         for key in ("sellable_units", "stocked_batches", "expired_batches", "near_expiry_batches"):
             current_inventory[key] = int(current_inventory[key] or 0)
@@ -1600,6 +1636,263 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             minimum_history_days=minimum_history_days,
         )
 
+
+    @app.route("/stock-actions/new", methods=["GET", "POST"])
+    def new_stock_action():
+        """Record a disposal or justified stock-count correction against an existing batch."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        today = date.today()
+        defaults = {
+            "batch_id": "", "operation_type": "disposal",
+            "business_date": today.isoformat(), "quantity": "",
+            "reason": "", "note": "",
+        }
+        form_data = dict(defaults)
+        request_token = secrets.token_urlsafe(32)
+        if request.method == "POST":
+            for field in form_data:
+                form_data[field] = str(request.form.get(field, "")).strip()
+            request_token = str(request.form.get("request_token", "")).strip()
+
+        batches = connection.execute(
+            """
+            SELECT b.id AS batch_id, b.product_id, b.received_date, b.expiry_date,
+                   b.quantity_remaining, b.unit_cost, p.name AS product_name,
+                   p.sku, p.unit
+            FROM stock_batches AS b
+            JOIN products AS p ON p.id = b.product_id
+            WHERE p.is_archived = 0
+            ORDER BY p.name COLLATE NOCASE, b.received_date DESC, b.id DESC
+            LIMIT 500
+            """
+        ).fetchall()
+
+        if request.method == "GET":
+            return render_template(
+                "stock_actions/form.html", title="Waste & stock corrections",
+                form_data=form_data, batches=batches, errors={},
+                request_token=request_token, today=today.isoformat(),
+            )
+        if not _csrf_is_valid():
+            abort(400)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", request_token):
+            abort(400)
+
+        operation_type = form_data["operation_type"]
+        if operation_type not in {"disposal", "adjustment_out", "adjustment_in"}:
+            errors = {"operation_type": "Choose a supported stock action."}
+            return render_template(
+                "stock_actions/form.html", title="Waste & stock corrections",
+                form_data=form_data, batches=batches, errors=errors,
+                request_token=request_token, today=today.isoformat(),
+            ), 400
+
+        existing_operation = connection.execute(
+            "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+            (request_token,),
+        ).fetchone()
+        if existing_operation is not None:
+            if existing_operation["operation_type"] == operation_type:
+                flash("This stock action was already processed. No duplicate movement was created.", "info")
+                return redirect(url_for("movements"))
+            abort(400)
+
+        errors: dict[str, str] = {}
+        max_integer = 9_223_372_036_854_775_807
+        batch = None
+        batch_raw = form_data["batch_id"]
+        if not re.fullmatch(r"[0-9]{1,19}", batch_raw):
+            errors["batch_id"] = "Choose an existing batch."
+        else:
+            chosen_batch_id = int(batch_raw)
+            if chosen_batch_id > max_integer:
+                errors["batch_id"] = "Choose an existing batch."
+            else:
+                batch = connection.execute(
+                    """
+                    SELECT b.id AS batch_id, b.product_id, b.received_date, b.expiry_date,
+                           b.quantity_remaining, b.unit_cost, p.name AS product_name,
+                           p.sku, p.unit
+                    FROM stock_batches AS b
+                    JOIN products AS p ON p.id = b.product_id
+                    WHERE b.id = ? AND p.is_archived = 0
+                    """,
+                    (chosen_batch_id,),
+                ).fetchone()
+                if batch is None:
+                    errors["batch_id"] = "Choose an existing batch belonging to an active product."
+
+        business_date = None
+        try:
+            business_date = date.fromisoformat(form_data["business_date"])
+            if business_date.isoformat() != form_data["business_date"] or business_date > today:
+                raise ValueError
+        except (TypeError, ValueError):
+            errors["business_date"] = "Enter a valid business date that is not in the future."
+
+        quantity = None
+        if not re.fullmatch(r"[0-9]{1,19}", form_data["quantity"]):
+            errors["quantity"] = "Quantity must be a whole number greater than zero."
+        else:
+            quantity = int(form_data["quantity"])
+            if quantity < 1 or quantity > max_integer:
+                errors["quantity"] = "Quantity must be a whole number greater than zero."
+
+        reason = form_data["reason"]
+        if not reason:
+            errors["reason"] = "Enter a reason so the stock change can be audited."
+        elif len(reason) > 200:
+            errors["reason"] = "Use no more than 200 characters for the reason."
+        if len(form_data["note"]) > 500:
+            errors["note"] = "Use no more than 500 characters for the note."
+
+        if batch is not None and business_date is not None:
+            received_date = date.fromisoformat(batch["received_date"])
+            if business_date < received_date:
+                errors["business_date"] = "The action date cannot be earlier than the batch receipt date."
+        if batch is not None and quantity is not None and quantity > 0:
+            remaining = int(batch["quantity_remaining"])
+            if operation_type in {"disposal", "adjustment_out"} and quantity > remaining:
+                errors["quantity"] = f"Only {remaining} {batch['unit']} remain in this batch."
+            elif operation_type == "adjustment_in" and quantity > max_integer - remaining:
+                errors["quantity"] = "The corrected batch quantity would exceed the database's supported range."
+            elif operation_type in {"disposal", "adjustment_out"} and remaining == 0:
+                errors["quantity"] = "This batch has no remaining stock to remove."
+
+        if errors:
+            return render_template(
+                "stock_actions/form.html", title="Waste & stock corrections",
+                form_data=form_data, batches=batches, errors=errors,
+                request_token=request_token, today=today.isoformat(),
+            ), 400
+
+        quantity_delta = int(quantity) if operation_type == "adjustment_in" else -int(quantity)
+        try:
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (
+                    operation_type, request_token, business_date, reason, note
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    operation_type, request_token, business_date.isoformat(),
+                    reason, form_data["note"] or None,
+                ),
+            )
+            operation_id = cursor.lastrowid
+            connection.execute(
+                """
+                INSERT INTO stock_movements (
+                    operation_id, product_id, batch_id, quantity_delta
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (operation_id, int(batch["product_id"]), int(batch["batch_id"]), quantity_delta),
+            )
+            connection.commit()
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            duplicate = connection.execute(
+                "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+                (request_token,),
+            ).fetchone()
+            if duplicate is not None and duplicate["operation_type"] == operation_type:
+                flash("This stock action was already processed. No duplicate movement was created.", "info")
+                return redirect(url_for("movements"))
+            current_app.logger.exception("Stock action was rejected by a database constraint.")
+            errors["_form"] = (
+                "The stock action could not be saved because an inventory rule was not satisfied. "
+                "No stock change was committed; review the batch and quantity."
+            )
+            return render_template(
+                "stock_actions/form.html", title="Waste & stock corrections",
+                form_data=form_data, batches=batches, errors=errors,
+                request_token=request_token, today=today.isoformat(),
+            ), 400
+        except sqlite3.Error:
+            connection.rollback()
+            current_app.logger.exception("Unable to save stock action.")
+            return render_template(
+                "error.html", title="Stock action could not be saved", error_code=503,
+                message="The stock action could not be saved. No stock change was committed; try again.",
+            ), 503
+
+        if operation_type == "disposal":
+            disposal_value = int(quantity) * int(batch["unit_cost"])
+            flash(
+                f"Disposal recorded for {batch['product_name']}: {quantity} {batch['unit']} removed; "
+                f"recorded cost value Rp {disposal_value:,}.",
+                "success",
+            )
+        elif operation_type == "adjustment_in":
+            flash(f"Stock count corrected: {quantity} {batch['unit']} added to batch #{batch['batch_id']}.", "success")
+        else:
+            flash(f"Stock count corrected: {quantity} {batch['unit']} removed from batch #{batch['batch_id']}.", "success")
+        return redirect(url_for("movements"))
+
+
+    @app.route("/settings", methods=["GET", "POST"])
+    def settings():
+        """View and update the local expiry-warning window."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        today = date.today()
+        row = connection.execute(
+            "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+        ).fetchone()
+        if row is None:
+            current_app.logger.error("The application settings row is missing.")
+            return render_template(
+                "error.html", title="Settings unavailable", error_code=503,
+                message="Application settings could not be loaded. Check the local database setup and try again.",
+            ), 503
+
+        current_days = int(row["expiry_warning_days"])
+        form_value = str(current_days)
+        error = None
+        if request.method == "POST":
+            if not _csrf_is_valid():
+                abort(400)
+            form_value = str(request.form.get("expiry_warning_days", "")).strip()
+            if not re.fullmatch(r"[0-9]{1,3}", form_value):
+                error = "Enter a whole number between 0 and 365."
+            else:
+                days = int(form_value)
+                if days > 365:
+                    error = "The expiry-warning window cannot exceed 365 days."
+                else:
+                    try:
+                        connection.execute(
+                            """
+                            UPDATE app_settings
+                            SET expiry_warning_days = ?,
+                                updated_at_utc = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                            WHERE id = 1
+                            """,
+                            (days,),
+                        )
+                        connection.commit()
+                    except sqlite3.Error:
+                        connection.rollback()
+                        current_app.logger.exception("Unable to update application settings.")
+                        return render_template(
+                            "error.html", title="Settings could not be saved", error_code=503,
+                            message="The setting could not be saved. No configuration change was committed.",
+                        ), 503
+                    flash("Expiry-warning window updated successfully.", "success")
+                    return redirect(url_for("settings"))
+
+        response = render_template(
+            "settings.html", title="Workspace settings",
+            expiry_warning_days=form_value, current_days=current_days,
+            error=error, today=today.isoformat(),
+        )
+        return (response, 400) if error else response
+
     @app.get("/movements")
     def movements():
         """Show an append-only view of inventory changes."""
@@ -1738,6 +2031,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         connection = database.get_db()
         today = date.today()
+        request_token = secrets.token_urlsafe(32)
         products = connection.execute(
             """
             SELECT p.id, p.name, p.sku, p.unit, p.selling_price, p.tracks_expiry,
@@ -1760,12 +2054,26 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if request.method == "POST":
             for field in form_data:
                 form_data[field] = str(request.form.get(field, "")).strip()
+            request_token = str(request.form.get("request_token", "")).strip()
         if request.method == "GET":
             return render_template(
                 "sales/form.html", title="Record a sale", products=products,
                 form_data=form_data, errors={}, today=today.isoformat(),
+                request_token=request_token,
             )
         if not _csrf_is_valid():
+            abort(400)
+        if not re.fullmatch(r"[A-Za-z0-9_-]{40,128}", request_token):
+            abort(400)
+
+        existing_operation = connection.execute(
+            "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+            (request_token,),
+        ).fetchone()
+        if existing_operation is not None:
+            if existing_operation["operation_type"] == "sale":
+                flash("This sale was already processed. No duplicate transaction was created.", "info")
+                return redirect(url_for("sales"))
             abort(400)
 
         errors: dict[str, str] = {}
@@ -1844,6 +2152,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return render_template(
                 "sales/form.html", title="Record a sale", products=products,
                 form_data=form_data, errors=errors, today=today.isoformat(),
+                request_token=request_token,
             ), 400
 
         try:
@@ -1853,7 +2162,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 VALUES ('sale', ?, ?, ?)
                 """,
                 (
-                    secrets.token_urlsafe(32), business_date.isoformat(),
+                    request_token, business_date.isoformat(),
                     form_data["note"] or None,
                 ),
             )
@@ -1887,6 +2196,13 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             connection.commit()
         except sqlite3.IntegrityError:
             connection.rollback()
+            duplicate = connection.execute(
+                "SELECT operation_type FROM stock_operations WHERE request_token = ?",
+                (request_token,),
+            ).fetchone()
+            if duplicate is not None and duplicate["operation_type"] == "sale":
+                flash("This sale was already processed. No duplicate transaction was created.", "info")
+                return redirect(url_for("sales"))
             current_app.logger.exception("Sale was rejected by the database.")
             errors["_form"] = (
                 "The sale could not be saved because an inventory rule was not satisfied. "
@@ -1895,6 +2211,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return render_template(
                 "sales/form.html", title="Record a sale", products=products,
                 form_data=form_data, errors=errors, today=today.isoformat(),
+                request_token=request_token,
             ), 400
         except sqlite3.Error:
             connection.rollback()

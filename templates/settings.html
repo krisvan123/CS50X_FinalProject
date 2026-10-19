@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">WORKSPACE / PREFERENCES</p>
+        <h1>Workspace settings</h1>
+        <p class="page-subtitle">Adjust when stocked batches should appear in the near-expiry watchlists across WarungWise.</p>
+    </div>
+    <div class="date-chip"><span class="date-chip-label">CURRENT DATE</span><strong>{{ today }}</strong></div>
+</section>
+<section class="content-card settings-panel">
+    <div class="section-heading">
+        <div><h2>Expiry-warning window</h2><p>Applies to the dashboard, stock batch statuses, and inventory snapshot reports.</p></div>
+        <span class="card-symbol" aria-hidden="true">◷</span>
+    </div>
+    <form method="post" action="{{ url_for('settings') }}" class="settings-form" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-field">
+            <label for="expiry_warning_days">Days before expiry</label>
+            <input id="expiry_warning_days" name="expiry_warning_days" type="number" min="0" max="365" step="1" required value="{{ expiry_warning_days }}" {% if error %}aria-invalid="true" aria-describedby="expiry-days-error"{% endif %}>
+            {% if error %}<p class="field-error" id="expiry-days-error">{{ error }}</p>{% endif %}
+            <p class="field-hint">Allowed: 0–365 days. Set 0 to show batches expiring today (expired stock remains separately flagged).</p>
+        </div>
+        <div class="settings-current"><span>Currently saved</span><strong>{{ current_days }} day(s)</strong></div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Save settings <span aria-hidden="true">→</span></button></div>
+    </form>
+</section>
+{% endblock %}

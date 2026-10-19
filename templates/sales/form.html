@@ -14,6 +14,7 @@
     <section class="content-card sale-form-card">
         <form method="post" action="{{ url_for('new_sale') }}" novalidate>
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="request_token" value="{{ request_token }}">
             {% if errors.get('_form') %}<div class="form-error-summary" role="alert">{{ errors['_form'] }}</div>{% endif %}
 
             <div class="form-section-heading">
