@@ -1,19 +1,21 @@
 """WarungWise Flask application entry point and product-management workflows."""
 from __future__ import annotations
 
+import csv
 import hmac
 import logging
 import math
 import os
 import re
 import secrets
+from io import StringIO
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 from flask import (
-    Flask, abort, current_app, flash, jsonify, redirect, render_template,
+    Flask, Response, abort, current_app, flash, jsonify, redirect, render_template,
     request, session, url_for,
 )
 
@@ -23,6 +25,143 @@ import database
 
 
 PRODUCT_TEXT_LIMITS = {"name": 120, "sku": 50, "category": 80, "unit": 30}
+
+
+REPORT_MAX_DAYS = 366
+REPORT_DEFAULT_DAYS = 30
+
+
+def _parse_report_period(
+    start_value: str,
+    end_value: str,
+    today: date,
+) -> tuple[date, date, str | None]:
+    """Validate a report date range without accepting ambiguous date formats."""
+    default_start = today - timedelta(days=REPORT_DEFAULT_DAYS - 1)
+
+    try:
+        start_date = date.fromisoformat(start_value) if start_value else default_start
+        end_date = date.fromisoformat(end_value) if end_value else today
+    except ValueError:
+        return default_start, today, "Enter valid start and end dates."
+
+    if (start_value and start_date.isoformat() != start_value) or (
+        end_value and end_date.isoformat() != end_value
+    ):
+        return default_start, today, "Dates must use the YYYY-MM-DD format."
+    if start_date > today or end_date > today:
+        return default_start, today, "Report dates cannot be in the future."
+    if start_date > end_date:
+        return default_start, today, "The start date must be on or before the end date."
+    if (end_date - start_date).days >= REPORT_MAX_DAYS:
+        return default_start, today, f"Choose a date range of no more than {REPORT_MAX_DAYS} days."
+
+    return start_date, end_date, None
+
+
+def _fetch_report_sales_rows(
+    connection: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Read sale-line records for a reporting period; no stock is modified."""
+    sql = """
+        SELECT s.id AS sale_id, op.business_date, op.occurred_at_utc,
+               op.note, p.name AS product_name, p.sku, p.unit,
+               si.quantity, si.unit_selling_price,
+               si.quantity * si.unit_selling_price AS gross_total
+        FROM sales AS s
+        JOIN stock_operations AS op ON op.id = s.operation_id
+        JOIN sale_items AS si ON si.sale_id = s.id
+        JOIN products AS p ON p.id = si.product_id
+        WHERE op.operation_type = 'sale'
+          AND op.business_date >= ? AND op.business_date <= ?
+        ORDER BY op.business_date DESC, op.occurred_at_utc DESC, s.id DESC
+    """
+    params: list[Any] = [start_date, end_date]
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+    return [dict(row) for row in connection.execute(sql, params).fetchall()]
+
+
+def _fetch_report_movement_rows(
+    connection: sqlite3.Connection,
+    start_date: str,
+    end_date: str,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Read stock movement audit records over a selected business-date period."""
+    sql = """
+        SELECT sm.id AS movement_id, sm.quantity_delta, op.operation_type,
+               op.occurred_at_utc, op.business_date, op.reason, op.note,
+               p.name AS product_name, p.sku, p.unit,
+               b.id AS batch_id, b.expiry_date
+        FROM stock_movements AS sm
+        JOIN stock_operations AS op ON op.id = sm.operation_id
+        JOIN products AS p ON p.id = sm.product_id
+        JOIN stock_batches AS b ON b.id = sm.batch_id
+        WHERE op.business_date >= ? AND op.business_date <= ?
+        ORDER BY op.business_date DESC, op.occurred_at_utc DESC, sm.id DESC
+    """
+    params: list[Any] = [start_date, end_date]
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+    return [dict(row) for row in connection.execute(sql, params).fetchall()]
+
+
+def _fetch_inventory_snapshot(
+    connection: sqlite3.Connection,
+    today: date,
+    warning_days: int,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    """Read current non-depleted batches and calculate their display status."""
+    sql = """
+        SELECT b.id AS batch_id, b.received_date, b.expiry_date,
+               b.quantity_received, b.quantity_remaining, b.unit_cost,
+               p.id AS product_id, p.name AS product_name, p.sku,
+               p.category, p.unit, p.minimum_stock
+        FROM stock_batches AS b
+        JOIN products AS p ON p.id = b.product_id
+        WHERE b.quantity_remaining > 0
+        ORDER BY
+            CASE WHEN b.expiry_date IS NULL THEN 1 ELSE 0 END,
+            b.expiry_date ASC, p.name COLLATE NOCASE ASC, b.id ASC
+    """
+    params: list[Any] = []
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+    rows = connection.execute(sql, params).fetchall()
+    warning_end = today + timedelta(days=warning_days)
+    snapshot: list[dict[str, Any]] = []
+    for row in rows:
+        item = dict(row)
+        expiry_value = item["expiry_date"]
+        if not expiry_value:
+            item["batch_status"] = "No expiry date"
+        else:
+            expiry_date = date.fromisoformat(expiry_value)
+            if expiry_date < today:
+                item["batch_status"] = "Expired"
+            elif expiry_date <= warning_end:
+                item["batch_status"] = "Near expiry"
+            else:
+                item["batch_status"] = "Available"
+        snapshot.append(item)
+    return snapshot
+
+
+def _safe_csv_text(value: Any) -> str:
+    """Prevent untrusted text fields from being interpreted as spreadsheet formulas."""
+    text_value = "" if value is None else str(value)
+    if text_value.lstrip(" \\t\\r\\n")[:1] in {"=", "+", "-", "@", "\\t", "\\r"}:
+        return "'" + text_value
+    return text_value
+
 
 
 def _get_csrf_token() -> str:
@@ -970,6 +1109,297 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         )
         return redirect(url_for("batches"))
 
+
+
+    @app.get("/reports")
+    def reports():
+        """Show date-filtered sales analysis and a current inventory snapshot."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        today = date.today()
+        start_date, end_date, period_error = _parse_report_period(
+            request.args.get("start_date", "").strip(),
+            request.args.get("end_date", "").strip(),
+            today,
+        )
+        if period_error:
+            return render_template(
+                "error.html",
+                title="Invalid report date range",
+                error_code=400,
+                message=period_error,
+            ), 400
+
+        start_iso = start_date.isoformat()
+        end_iso = end_date.isoformat()
+        try:
+            connection = database.get_db()
+            summary_row = connection.execute(
+                """
+                SELECT
+                    COUNT(DISTINCT s.id) AS transaction_count,
+                    COALESCE(SUM(si.quantity), 0) AS units_sold,
+                    COALESCE(SUM(si.quantity * si.unit_selling_price), 0) AS gross_revenue
+                FROM sales AS s
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                JOIN sale_items AS si ON si.sale_id = s.id
+                WHERE op.operation_type = 'sale'
+                  AND op.business_date >= ? AND op.business_date <= ?
+                """,
+                (start_iso, end_iso),
+            ).fetchone()
+            daily_rows = connection.execute(
+                """
+                SELECT
+                    op.business_date,
+                    COUNT(DISTINCT s.id) AS transaction_count,
+                    COALESCE(SUM(si.quantity), 0) AS units_sold,
+                    COALESCE(SUM(si.quantity * si.unit_selling_price), 0) AS gross_revenue
+                FROM sales AS s
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                JOIN sale_items AS si ON si.sale_id = s.id
+                WHERE op.operation_type = 'sale'
+                  AND op.business_date >= ? AND op.business_date <= ?
+                GROUP BY op.business_date
+                ORDER BY op.business_date ASC
+                """,
+                (start_iso, end_iso),
+            ).fetchall()
+            top_products = connection.execute(
+                """
+                SELECT p.name AS product_name, p.sku, p.unit,
+                       SUM(si.quantity) AS units_sold,
+                       SUM(si.quantity * si.unit_selling_price) AS gross_revenue,
+                       COUNT(DISTINCT s.id) AS transaction_count
+                FROM sales AS s
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                JOIN sale_items AS si ON si.sale_id = s.id
+                JOIN products AS p ON p.id = si.product_id
+                WHERE op.operation_type = 'sale'
+                  AND op.business_date >= ? AND op.business_date <= ?
+                GROUP BY p.id, p.name, p.sku, p.unit
+                ORDER BY gross_revenue DESC, units_sold DESC, p.name COLLATE NOCASE ASC
+                LIMIT 10
+                """,
+                (start_iso, end_iso),
+            ).fetchall()
+            movement_count = connection.execute(
+                """
+                SELECT COUNT(*) AS total
+                FROM stock_movements AS sm
+                JOIN stock_operations AS op ON op.id = sm.operation_id
+                WHERE op.business_date >= ? AND op.business_date <= ?
+                """,
+                (start_iso, end_iso),
+            ).fetchone()["total"]
+            settings = connection.execute(
+                "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+            ).fetchone()
+            warning_days = int(settings["expiry_warning_days"]) if settings else 7
+            inventory_summary = connection.execute(
+                """
+                SELECT
+                    COALESCE(SUM(CASE
+                        WHEN b.quantity_remaining > 0
+                         AND b.received_date <= ?
+                         AND (b.expiry_date IS NULL OR b.expiry_date >= ?)
+                        THEN b.quantity_remaining ELSE 0 END), 0) AS sellable_units,
+                    SUM(CASE WHEN b.quantity_remaining > 0 THEN 1 ELSE 0 END) AS stocked_batches,
+                    SUM(CASE WHEN b.quantity_remaining > 0 AND b.expiry_date < ?
+                        THEN 1 ELSE 0 END) AS expired_batches,
+                    SUM(CASE WHEN b.quantity_remaining > 0
+                        AND b.expiry_date >= ? AND b.expiry_date <= ?
+                        THEN 1 ELSE 0 END) AS near_expiry_batches
+                FROM stock_batches AS b
+                JOIN products AS p ON p.id = b.product_id
+                WHERE p.is_archived = 0
+                """,
+                (
+                    today.isoformat(), today.isoformat(), today.isoformat(),
+                    today.isoformat(), (today + timedelta(days=warning_days)).isoformat(),
+                ),
+            ).fetchone()
+            sales_rows = _fetch_report_sales_rows(connection, start_iso, end_iso, limit=20)
+            movement_rows = _fetch_report_movement_rows(connection, start_iso, end_iso, limit=20)
+            inventory_rows = _fetch_inventory_snapshot(connection, today, warning_days, limit=12)
+        except (sqlite3.Error, FileNotFoundError, ValueError):
+            current_app.logger.exception("Unable to load reports.")
+            return render_template(
+                "error.html",
+                title="Reports unavailable",
+                error_code=503,
+                message="The reports could not be loaded. Check the database setup and try again.",
+            ), 503
+
+        daily_by_date = {row["business_date"]: dict(row) for row in daily_rows}
+        peak_revenue = max(
+            (int(row["gross_revenue"] or 0) for row in daily_rows),
+            default=0,
+        )
+        daily_chart: list[dict[str, Any]] = []
+        day = start_date
+        while day <= end_date:
+            key = day.isoformat()
+            daily = daily_by_date.get(key, {})
+            revenue = int(daily.get("gross_revenue", 0) or 0)
+            daily_chart.append({
+                "date": key,
+                "day_label": day.strftime("%d"),
+                "month_label": day.strftime("%d %b"),
+                "gross_revenue": revenue,
+                "transaction_count": int(daily.get("transaction_count", 0) or 0),
+                "units_sold": int(daily.get("units_sold", 0) or 0),
+                "height_percent": (
+                    max(4, round(revenue * 100 / peak_revenue))
+                    if peak_revenue and revenue else 0
+                ),
+                "show_label": (
+                    day == start_date or day == end_date or day.day == 1
+                    or (day - start_date).days % 5 == 0
+                ),
+            })
+            day += timedelta(days=1)
+
+        summary = dict(summary_row)
+        summary["transaction_count"] = int(summary["transaction_count"] or 0)
+        summary["units_sold"] = int(summary["units_sold"] or 0)
+        summary["gross_revenue"] = int(summary["gross_revenue"] or 0)
+        current_inventory = dict(inventory_summary)
+        for key in ("sellable_units", "stocked_batches", "expired_batches", "near_expiry_batches"):
+            current_inventory[key] = int(current_inventory[key] or 0)
+
+        movement_labels = {
+            "receipt": "Stock received",
+            "sale": "Sale",
+            "disposal": "Disposal",
+            "adjustment_in": "Stock adjustment · inbound",
+            "adjustment_out": "Stock adjustment · outbound",
+        }
+        for movement in movement_rows:
+            movement["operation_label"] = movement_labels.get(
+                movement["operation_type"], "Stock movement"
+            )
+            delta = int(movement["quantity_delta"])
+            movement["quantity_display"] = f"+{delta}" if delta > 0 else str(delta)
+
+        return render_template(
+            "reports/index.html",
+            title="Reports & analytics",
+            summary=summary,
+            top_products=[dict(row) for row in top_products],
+            daily_chart=daily_chart,
+            peak_revenue=peak_revenue,
+            movements=movement_rows,
+            sales=sales_rows,
+            inventory=inventory_rows,
+            current_inventory=current_inventory,
+            warning_days=warning_days,
+            start_date=start_iso,
+            end_date=end_iso,
+            today=today.isoformat(),
+            movement_count=int(movement_count or 0),
+        )
+
+    @app.get("/reports/export/<report_type>")
+    def export_report(report_type: str):
+        """Export filtered sales, dated stock movements, or current batch stock to CSV."""
+        if report_type not in {"sales", "movements", "inventory"}:
+            abort(404)
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        today = date.today()
+        if report_type == "inventory":
+            start_date = today
+            end_date = today
+        else:
+            start_date, end_date, period_error = _parse_report_period(
+                request.args.get("start_date", "").strip(),
+                request.args.get("end_date", "").strip(),
+                today,
+            )
+            if period_error:
+                return Response(period_error + "\\n", status=400, mimetype="text/plain")
+
+        try:
+            connection = database.get_db()
+            if report_type == "sales":
+                rows = _fetch_report_sales_rows(
+                    connection, start_date.isoformat(), end_date.isoformat()
+                )
+                headers = [
+                    "Sale ID", "Business Date", "Recorded At (UTC)", "Product", "SKU",
+                    "Quantity", "Unit", "Unit Selling Price (IDR)", "Gross Total (IDR)", "Note",
+                ]
+                data = [
+                    [
+                        row["sale_id"], row["business_date"], row["occurred_at_utc"],
+                        _safe_csv_text(row["product_name"]), _safe_csv_text(row["sku"]),
+                        row["quantity"], _safe_csv_text(row["unit"]),
+                        row["unit_selling_price"], row["gross_total"], _safe_csv_text(row["note"]),
+                    ]
+                    for row in rows
+                ]
+                filename = f"warungwise_sales_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+            elif report_type == "movements":
+                rows = _fetch_report_movement_rows(
+                    connection, start_date.isoformat(), end_date.isoformat()
+                )
+                headers = [
+                    "Movement ID", "Business Date", "Recorded At (UTC)", "Operation Type",
+                    "Product", "SKU", "Batch ID", "Quantity Delta", "Unit", "Expiry Date",
+                    "Reason", "Note",
+                ]
+                data = [
+                    [
+                        row["movement_id"], row["business_date"], row["occurred_at_utc"],
+                        _safe_csv_text(row["operation_type"]), _safe_csv_text(row["product_name"]),
+                        _safe_csv_text(row["sku"]), row["batch_id"], row["quantity_delta"],
+                        _safe_csv_text(row["unit"]), row["expiry_date"],
+                        _safe_csv_text(row["reason"]), _safe_csv_text(row["note"]),
+                    ]
+                    for row in rows
+                ]
+                filename = f"warungwise_movements_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+            else:
+                settings = connection.execute(
+                    "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+                ).fetchone()
+                warning_days = int(settings["expiry_warning_days"]) if settings else 7
+                rows = _fetch_inventory_snapshot(connection, today, warning_days)
+                headers = [
+                    "Batch ID", "Product", "SKU", "Category", "Received Date", "Expiry Date",
+                    "Quantity Received", "Quantity Remaining", "Unit", "Unit Cost (IDR)", "Status",
+                ]
+                data = [
+                    [
+                        row["batch_id"], _safe_csv_text(row["product_name"]),
+                        _safe_csv_text(row["sku"]), _safe_csv_text(row["category"]),
+                        row["received_date"], row["expiry_date"], row["quantity_received"],
+                        row["quantity_remaining"], _safe_csv_text(row["unit"]),
+                        row["unit_cost"], _safe_csv_text(row["batch_status"]),
+                    ]
+                    for row in rows
+                ]
+                filename = f"warungwise_inventory_snapshot_{today.isoformat()}.csv"
+        except (sqlite3.Error, FileNotFoundError, ValueError):
+            current_app.logger.exception("Unable to export report CSV.")
+            return render_template(
+                "error.html",
+                title="CSV export unavailable",
+                error_code=503,
+                message="The CSV file could not be generated. Check the database setup and try again.",
+            ), 503
+
+        output = StringIO(newline="")
+        csv_writer = csv.writer(output)
+        csv_writer.writerow(headers)
+        csv_writer.writerows(data)
+        response = Response("\\ufeff" + output.getvalue(), mimetype="text/csv")
+        response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/recommendations")
     def recommendations():
