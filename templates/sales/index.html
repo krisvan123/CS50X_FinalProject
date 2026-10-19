@@ -65,7 +65,7 @@
                 <tr data-testid="sale-row">
                     <td><span class="sale-reference">#{{ "%05d"|format(sale.sale_id) }}</span><small>{{ sale.occurred_at_utc|replace('T', ' ')|replace('Z', ' UTC') }}</small></td>
                     <td>{{ sale.business_date }}</td>
-                    <td><strong class="table-primary-text">{{ sale.product_name }}</strong><small>{{ sale.sku or "No SKU" }} · {{ sale.unit }}</small></td>
+                    <td><strong class="table-primary-text">{{ sale.product_name }}</strong><small><code class="ww-identifier">{{ sale.sku or "No SKU" }}</code> · {{ sale.unit }}</small></td>
                     <td><strong class="quantity-cell">{{ sale.quantity }}</strong> <span class="unit-caption">{{ sale.unit }}</span></td>
                     <td class="money-cell">{{ sale.unit_selling_price|idr }}</td>
                     <td><strong class="sale-total-cell">{{ sale.line_total|idr }}</strong></td>

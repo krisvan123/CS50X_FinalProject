@@ -83,7 +83,7 @@
                     <td><span class="batch-reference">#{{ "%05d"|format(batch.batch_id) }}</span><small>Received {{ batch.quantity_received }} {{ batch.unit }}</small></td>
                     <td>
                         <strong class="table-primary-text">{{ batch.product_name }}</strong>
-                        <small>{{ batch.sku or "No SKU" }} · {{ batch.unit }}</small>
+                        <small><code class="ww-identifier">{{ batch.sku or "No SKU" }}</code> · {{ batch.unit }}</small>
                     </td>
                     <td>{{ batch.received_date }}</td>
                     <td>

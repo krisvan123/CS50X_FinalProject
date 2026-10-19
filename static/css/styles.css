@@ -23,7 +23,7 @@ body {
     margin: 0;
     background: var(--ww-page);
     color: var(--ww-ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
     line-height: 1.55;
 }
@@ -1197,7 +1197,7 @@ body {
     --ww-radius: 17px;
 }
 body {
-    font-family: "DM Sans", "Segoe UI", sans-serif;
+    font-family: "Geist", "Segoe UI", sans-serif;
     font-size: 14px;
     line-height: 1.6;
     letter-spacing: -0.01em;
@@ -1205,14 +1205,14 @@ body {
     text-rendering: optimizeLegibility;
 }
 h1, h2, h3, h4, .brand-copy strong, .metric-value, .sales-total, .batch-summary-card strong {
-    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-family: "Geist", "Segoe UI", sans-serif;
     letter-spacing: -0.035em;
 }
 .brand-copy strong { font-size: 17px; font-weight: 800; letter-spacing: -0.045em; }
 .brand-copy small { font-size: 11px; letter-spacing: 0; }
 .nav-item { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
 .sidebar-section-label { font-size: 10px; letter-spacing: 1.5px; }
-.topbar-title { font-family: "Manrope", "Segoe UI", sans-serif; font-size: 13px; font-weight: 750; letter-spacing: -.025em; }
+.topbar-title { font-family: "Geist", "Segoe UI", sans-serif; font-size: 13px; font-weight: 750; letter-spacing: -.025em; }
 .main-content { padding-top: 35px; }
 .page-heading { margin-bottom: 28px; }
 .page-heading h1 { font-size: clamp(27px, 2.45vw, 35px); line-height: 1.16; font-weight: 800; letter-spacing: -.055em; }
@@ -1220,10 +1220,10 @@ h1, h2, h3, h4, .brand-copy strong, .metric-value, .sales-total, .batch-summary-
 .eyebrow { font-size: 10px; font-weight: 800; letter-spacing: 1.45px; }
 .button { min-height: 43px; padding: 11px 16px; border-radius: 12px; font-size: 12px; font-weight: 750; letter-spacing: -.01em; }
 .content-card { border-radius: 19px; box-shadow: 0 5px 22px rgba(25, 55, 41, .035); }
-.section-heading h2, .next-step-card h2, .form-section-heading h2 { font-family: "Manrope", "Segoe UI", sans-serif; font-weight: 800; letter-spacing: -.04em; }
+.section-heading h2, .next-step-card h2, .form-section-heading h2 { font-family: "Geist", "Segoe UI", sans-serif; font-weight: 800; letter-spacing: -.04em; }
 .metric-label, .filter-search label, .filter-field label, .form-field label { font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
 .metric-value { font-size: 36px; font-weight: 800; }
-input, select, textarea { font-family: "DM Sans", "Segoe UI", sans-serif; }
+input, select, textarea { font-family: "Geist", "Segoe UI", sans-serif; }
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
     min-height: 44px;
     border-color: #dce6df;
@@ -1456,7 +1456,7 @@ body {
 }
 .sales-summary-label { display: block; position: relative; z-index: 1; color: #718078; font-size: 11px; font-weight: 750; }
 .sales-summary-featured .sales-summary-label { color: rgba(246, 255, 244, .72); }
-.sales-summary-card > strong { display: block; position: relative; z-index: 1; margin-top: 12px; color: #21392d; font-family: "Manrope", sans-serif; font-size: clamp(24px, 2.25vw, 32px); font-weight: 800; letter-spacing: -.055em; line-height: 1.18; overflow-wrap: anywhere; }
+.sales-summary-card > strong { display: block; position: relative; z-index: 1; margin-top: 12px; color: #21392d; font-family: "Geist", sans-serif; font-size: clamp(24px, 2.25vw, 32px); font-weight: 800; letter-spacing: -.055em; line-height: 1.18; overflow-wrap: anywhere; }
 .sales-summary-featured > strong { color: #f4faee; font-size: clamp(28px, 2.5vw, 36px); }
 .sales-summary-card > small { display: block; position: relative; z-index: 1; margin-top: 11px; color: #8a978f; font-size: 10px; line-height: 1.6; }
 .sales-summary-featured > small { color: rgba(234, 247, 230, .68); }
@@ -1496,7 +1496,7 @@ body {
 }
 .sale-submit-summary > div { min-width: 0; }
 .sale-submit-summary span { display: block; color: #728479; font-size: 10px; font-weight: 700; }
-.sale-submit-summary strong { display: block; margin-top: 7px; color: #244b37; font-family: "Manrope", sans-serif; font-size: 14px; font-weight: 800; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.sale-submit-summary strong { display: block; margin-top: 7px; color: #244b37; font-family: "Geist", sans-serif; font-size: 14px; font-weight: 800; letter-spacing: -.035em; overflow-wrap: anywhere; }
 .sale-submit-summary.sale-preview-ready { border-color: #c7e2ca; background: linear-gradient(120deg, #edf8ef, #f4faf0); }
 .sale-submit-summary.sale-preview-warning { border-color: #f1d4a5; background: linear-gradient(120deg, #fff8e9, #fffdf7); }
 .sale-submit-summary.sale-preview-warning strong { color: #946016; }
@@ -1505,7 +1505,7 @@ body {
     background: radial-gradient(circle at 100% 0%, rgba(207, 239, 194, .38), transparent 13rem), linear-gradient(150deg, #fbfdfb, #f0f8f0);
 }
 .fefo-icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 22px; border-radius: 13px; background: #dff0df; color: #2e7a4d; font-size: 18px; font-weight: 800; }
-.fefo-guidance h2 { margin: 7px 0 10px; color: #234332; font-family: "Manrope", sans-serif; font-size: 20px; line-height: 1.35; font-weight: 800; letter-spacing: -.05em; }
+.fefo-guidance h2 { margin: 7px 0 10px; color: #234332; font-family: "Geist", sans-serif; font-size: 20px; line-height: 1.35; font-weight: 800; letter-spacing: -.05em; }
 .fefo-guidance > p:not(.eyebrow) { color: #77887e; font-size: 12px; line-height: 1.75; }
 .fefo-step { display: flex; gap: 12px; margin-top: 20px; padding-top: 17px; border-top: 1px solid #e1ebe1; }
 .fefo-step > span { display: grid; flex: 0 0 auto; place-items: center; width: 28px; height: 28px; border-radius: 9px; background: #e5f1e4; color: #467651; font-size: 10px; font-weight: 800; }
@@ -1547,13 +1547,13 @@ body {
 
 /* Phase 8 — dashboard hierarchy, richer surfaces, and intentional motion. */
 body {
-    font-family: "DM Sans", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     background:
         radial-gradient(ellipse at 77% 3%, rgba(208, 235, 220, .42), transparent 31rem),
         var(--ww-page);
 }
 h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
-    font-family: "Manrope", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+    font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
 }
 .sidebar {
     position: relative;
@@ -1850,7 +1850,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     border-radius: 12px;
     background: #eaf6ed;
     color: #2d7853;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 15px;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
@@ -1883,7 +1883,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     border-radius: 13px;
     background: linear-gradient(145deg, #f0f9f1, #e1f1e5);
     color: #327151;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 15px;
     font-weight: 800;
 }
@@ -1898,7 +1898,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 }
 .alert-list-copy span { overflow: hidden; margin-top: 4px; color: #839188; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .alert-list-value { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; }
-.alert-list-value strong { color: #b3762b; font-family: "Manrope", sans-serif; font-size: 17px; font-weight: 800; }
+.alert-list-value strong { color: #b3762b; font-family: "Geist", sans-serif; font-size: 17px; font-weight: 800; }
 .alert-list-value span { margin-top: 1px; color: #89958e; font-size: 9px; }
 .expiry-calendar {
     gap: 0;
@@ -1907,7 +1907,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     color: #a66f23;
     line-height: 1;
 }
-.expiry-calendar span { font-family: "Manrope", sans-serif; font-size: 15px; font-weight: 800; }
+.expiry-calendar span { font-family: "Geist", sans-serif; font-size: 15px; font-weight: 800; }
 .expiry-calendar small { margin-top: 3px; font-size: 8px; font-weight: 800; letter-spacing: .7px; }
 .expiry-calendar-red { border-color: #f0d1cf; background: #fff0ef; color: #b54a43; }
 .expiry-status { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; max-width: 108px; }
@@ -2175,7 +2175,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 .recommendation-summary-card strong {
     margin-top: 7px;
     color: #193f2f;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 30px;
     font-weight: 800;
     letter-spacing: -1px;
@@ -2246,7 +2246,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     border-radius: 16px;
     background: linear-gradient(145deg, #c9f1d4, #8dcba5);
     color: #153f2d;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 22px;
     font-weight: 800;
     box-shadow: 0 8px 20px rgba(0,0,0,.14);
@@ -2256,7 +2256,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 .formula-copy h2 {
     margin: 0 0 12px;
     color: #f2fff5;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 18px;
     font-weight: 800;
     letter-spacing: -.5px;
@@ -2328,7 +2328,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     border-radius: 12px;
     background: linear-gradient(145deg, #f0f9f1, #e1f1e5);
     color: #327151;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 14px;
     font-weight: 800;
 }
@@ -2374,11 +2374,11 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     border-radius: 10px;
     background: #edf9ef;
     color: #206943;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: 16px;
     font-weight: 800;
 }
-.recommendation-zero { color: #6f8276; font-family: "Manrope", sans-serif; font-size: 17px; }
+.recommendation-zero { color: #6f8276; font-family: "Geist", sans-serif; font-size: 17px; }
 .recommendation-dash { color: #a0aaa4; font-size: 16px; }
 .recommendation-status {
     display: inline-flex;
@@ -2453,7 +2453,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     font-weight: 800;
     letter-spacing: 1px;
 }
-.report-as-of strong { color: #1b5239; font-family: "Manrope", sans-serif; font-size: 13px; }
+.report-as-of strong { color: #1b5239; font-family: "Geist", sans-serif; font-size: 13px; }
 .report-as-of small { color: #89968f; font-size: 10px; }
 
 .report-filter-card { margin-bottom: 16px; padding: 18px 20px; }
@@ -2598,7 +2598,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     margin-top: 6px;
     overflow-wrap: anywhere;
     color: #193f2f;
-    font-family: "Manrope", sans-serif;
+    font-family: "Geist", sans-serif;
     font-size: clamp(22px, 2.1vw, 30px);
     font-weight: 800;
     letter-spacing: -1px;
@@ -2619,12 +2619,12 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
     gap: 14px;
     margin-bottom: 17px;
 }
-.report-section-heading h2 { margin: 0; color: #263f32; font-family: "Manrope", sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -.35px; }
+.report-section-heading h2 { margin: 0; color: #263f32; font-family: "Geist", sans-serif; font-size: 16px; font-weight: 800; letter-spacing: -.35px; }
 .report-section-heading p:not(.eyebrow) { margin: 5px 0 0; color: #849188; font-size: 10px; line-height: 1.55; }
 .report-section-heading .eyebrow { margin-bottom: 5px; font-size: 9px; }
 .chart-peak { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 9px 12px; border: 1px solid #e4eee7; border-radius: 11px; background: #f8fbf9; white-space: nowrap; }
 .chart-peak span { color: #84948a; font-size: 9px; }
-.chart-peak strong { color: #277149; font-family: "Manrope", sans-serif; font-size: 13px; font-weight: 800; }
+.chart-peak strong { color: #277149; font-family: "Geist", sans-serif; font-size: 13px; font-weight: 800; }
 .report-chart-legend { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; color: #72847a; font-size: 10px; }
 .report-chart-legend span { width: 8px; height: 8px; border-radius: 3px; background: #3c9868; box-shadow: 0 0 0 3px rgba(60,152,104,.1); }
 .report-chart-scroll { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 3px 2px 8px; scrollbar-color: #cadbd0 transparent; scrollbar-width: thin; }
@@ -2668,7 +2668,7 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 .stock-position-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; margin-bottom: 15px; }
 .stock-position-grid > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 12px; border: 1px solid #e5ede7; border-radius: 12px; background: #f9fbf9; }
 .stock-position-grid span { color: #819086; font-size: 9px; }
-.stock-position-grid strong { color: #274d37; font-family: "Manrope", sans-serif; font-size: 20px; font-weight: 800; line-height: 1.15; }
+.stock-position-grid strong { color: #274d37; font-family: "Geist", sans-serif; font-size: 20px; font-weight: 800; line-height: 1.15; }
 .stock-position-grid strong.stock-warning { color: #aa7625; }
 .stock-position-grid strong.stock-danger { color: #b64943; }
 .inventory-preview-list { border-top: 1px solid #edf2ee; }
@@ -2715,6 +2715,108 @@ h1, h2, h3, .brand-copy strong, .metric-value, .sales-total {
 }
 @media (prefers-reduced-motion: reduce) {
     .report-export-card, .report-summary-card, .report-chart-bar, .report-text-link {
+        transition: none !important;
+    }
+}
+
+
+/* Phase 11 — modern Geist typography, luminous orbit, and final accessibility polish. */
+:root {
+    --ww-font-sans: "Geist", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --ww-font-mono: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+html,
+body {
+    font-family: var(--ww-font-sans);
+    font-optical-sizing: auto;
+}
+button,
+input,
+select,
+textarea {
+    font-family: var(--ww-font-sans);
+}
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--ww-font-sans);
+    font-optical-sizing: auto;
+}
+code, pre, kbd, samp,
+.ww-identifier, .batch-reference, .sale-reference, .timestamp-main {
+    font-family: var(--ww-font-mono);
+    font-variant-numeric: tabular-nums;
+}
+code.ww-identifier {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: .92em;
+}
+.metric-value, .sales-total, .stock-count, .quantity-cell, .sale-total-cell,
+.report-summary-card > strong, .stock-position-grid strong {
+    font-variant-numeric: lining-nums tabular-nums;
+}
+.form-field input, .form-field select, .form-field textarea,
+.report-date-form input, .report-date-form select {
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+.form-field input:focus-visible, .form-field select:focus-visible,
+.form-field textarea:focus-visible,
+.report-date-form input:focus-visible, .report-date-form select:focus-visible {
+    border-color: #69a985;
+    box-shadow: 0 0 0 4px rgba(76, 157, 108, .14);
+    outline: none;
+}
+:where(.nav-item, .button, .text-link, .report-text-link, .report-export-card):focus-visible {
+    outline: 3px solid #9bd7ae;
+    outline-offset: 3px;
+}
+.table-responsive {
+    overscroll-behavior-x: contain;
+    scrollbar-color: #bed4c5 transparent;
+    scrollbar-width: thin;
+}
+
+/* This glowing arc rotates independently from the faint orbit ring underneath it. */
+.sidebar-orbit-light {
+    position: absolute;
+    z-index: 0;
+    right: -37px;
+    bottom: 112px;
+    display: block;
+    width: 192px;
+    height: 192px;
+    border-radius: 50%;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg 292deg,
+        rgba(114, 255, 169, .12) 306deg,
+        rgba(186, 255, 203, .98) 326deg,
+        rgba(72, 235, 145, .74) 341deg,
+        transparent 356deg 360deg
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 1px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 1px));
+    filter: drop-shadow(0 0 5px rgba(92, 245, 151, .52));
+    animation: ww-orbit-light-spin 10s linear infinite;
+    pointer-events: none;
+}
+@keyframes ww-orbit-light-spin {
+    to { transform: rotate(1turn); }
+}
+@media (max-width: 767.98px) {
+    .sidebar-orbit-light {
+        right: -37px;
+        bottom: 112px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .sidebar-orbit-light {
+        animation: none !important;
+        filter: none;
+    }
+    .form-field input, .form-field select, .form-field textarea,
+    .report-date-form input, .report-date-form select {
         transition: none !important;
     }
 }

@@ -66,7 +66,7 @@
             <tbody>
                 {% for product in products %}
                 <tr>
-                    <td><div class="product-name-cell"><strong>{{ product.name }}</strong><span>{{ product.sku or "No SKU" }} · per {{ product.unit }}</span></div></td>
+                    <td><div class="product-name-cell"><strong>{{ product.name }}</strong><span><code class="ww-identifier">{{ product.sku or "No SKU" }}</code> · per {{ product.unit }}</span></div></td>
                     <td>{{ product.category or "Uncategorized" }}</td>
                     <td class="money-cell">{{ product.selling_price|idr }}</td>
                     <td><span class="stock-count">{{ product.remaining_stock }}</span><span class="table-subtext">unit(s)</span></td>
