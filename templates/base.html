@@ -12,7 +12,10 @@
         rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
         crossorigin="anonymous">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='3') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='4') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -37,16 +40,14 @@
                 <span class="nav-icon" aria-hidden="true">▤</span>
                 <span>Products</span>
             </a>
-            <span class="nav-item disabled" aria-disabled="true">
+            <a class="nav-item {% if request.endpoint in ('batches', 'new_batch') %}active{% endif %}" href="{{ url_for('batches') }}" {% if request.endpoint in ('batches', 'new_batch') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▣</span>
                 <span>Stock batches</span>
-                <span class="nav-status">Planned</span>
-            </span>
-            <span class="nav-item disabled" aria-disabled="true">
+            </a>
+            <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">⇄</span>
                 <span>Movements</span>
-                <span class="nav-status">Planned</span>
-            </span>
+            </a>
             <span class="nav-item disabled" aria-disabled="true">
                 <span class="nav-icon" aria-hidden="true">▥</span>
                 <span>Reports</span>
