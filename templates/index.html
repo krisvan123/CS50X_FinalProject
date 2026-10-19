@@ -21,7 +21,7 @@
     <div class="welcome-icon" aria-hidden="true">✓</div>
     <div>
         <strong>Your local database is connected</strong>
-        <p>Dashboard figures are calculated from saved records. Product management, batch-based stock receipts, and FEFO sales are available; manual stock adjustments are planned for a later milestone.</p>
+        <p>Dashboard figures are calculated from saved records. Use the watchlists below to spot stock shortages and expiry risks before reviewing the latest inventory activity.</p>
     </div>
     <span class="status-pill"><span aria-hidden="true"></span> Database ready</span>
 </section>
@@ -77,6 +77,89 @@
             </article>
         </div>
     </div>
+</section>
+
+<section class="dashboard-alert-grid" aria-label="Inventory watchlists">
+    <article class="content-card alert-watchlist-card low-stock-watchlist">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">ACTION REQUIRED</p>
+                <h2>Low-stock watchlist</h2>
+                <p>Sellable quantity at or below each product's minimum threshold.</p>
+            </div>
+            <span class="watchlist-count">{{ stats.low_stock_products }}</span>
+        </div>
+
+        {% if low_stock_items %}
+        <div class="alert-list">
+            {% for product in low_stock_items %}
+            <div class="alert-list-row">
+                <span class="product-initial" aria-hidden="true">{{ product.name[:1]|upper }}</span>
+                <div class="alert-list-copy">
+                    <strong>{{ product.name }}</strong>
+                    <span>{% if product.sku %}{{ product.sku }} · {% endif %}Minimum {{ product.minimum_stock }} {{ product.unit }}</span>
+                </div>
+                <div class="alert-list-value">
+                    <strong>{{ product.sellable_quantity }}</strong>
+                    <span>{{ product.unit }} left</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="watchlist-empty">
+            <span class="watchlist-empty-icon" aria-hidden="true">✓</span>
+            <div><strong>Stock levels look healthy</strong><p>No active products are at or below their minimum stock threshold.</p></div>
+        </div>
+        {% endif %}
+        <a class="watchlist-link" href="{{ url_for('products') }}">Review product catalogue <span aria-hidden="true">↗</span></a>
+    </article>
+
+    <article class="content-card alert-watchlist-card expiry-watchlist">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">EXPIRY MONITOR</p>
+                <h2>Expiry watchlist</h2>
+                <p>Expired and upcoming expiry batches with remaining stock.</p>
+            </div>
+            <span class="watchlist-count watchlist-count-amber">{{ expiry_alerts|length }}</span>
+        </div>
+
+        {% if expiry_alerts %}
+        <div class="alert-list">
+            {% for alert in expiry_alerts %}
+            <div class="alert-list-row expiry-alert-row">
+                <span class="expiry-calendar {% if alert.is_expired %}expiry-calendar-red{% else %}expiry-calendar-amber{% endif %}" aria-hidden="true">
+                    <span>{{ alert.expiry_date[8:10] }}</span>
+                    <small>{{ alert.expiry_date[5:7] }}</small>
+                </span>
+                <div class="alert-list-copy">
+                    <strong>{{ alert.product_name }}</strong>
+                    <span>Batch #{{ alert.batch_id }} · {{ alert.quantity_remaining }} {{ alert.unit }} remaining</span>
+                </div>
+                <div class="expiry-status {% if alert.is_expired %}expiry-status-red{% else %}expiry-status-amber{% endif %}">
+                    {% if alert.is_expired %}
+                    <strong>Expired</strong>
+                    <span>{{ alert.days_to_expiry|abs }} day{% if alert.days_to_expiry|abs != 1 %}s{% endif %} ago</span>
+                    {% elif alert.days_to_expiry == 0 %}
+                    <strong>Expires today</strong>
+                    <span>{{ alert.expiry_date }}</span>
+                    {% else %}
+                    <strong>{{ alert.days_to_expiry }} day{% if alert.days_to_expiry != 1 %}s{% endif %} left</strong>
+                    <span>{{ alert.expiry_date }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="watchlist-empty">
+            <span class="watchlist-empty-icon watchlist-empty-icon-amber" aria-hidden="true">◷</span>
+            <div><strong>No expiry risks in the warning window</strong><p>No remaining batches are expired or due within {{ stats.expiry_warning_days }} days.</p></div>
+        </div>
+        {% endif %}
+        <a class="watchlist-link" href="{{ url_for('batches', status='near_expiry') }}">Review batch expiry dates <span aria-hidden="true">↗</span></a>
+    </article>
 </section>
 
 <section class="secondary-grid">
