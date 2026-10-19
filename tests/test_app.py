@@ -564,5 +564,217 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertIn(b"No stock movements found", response.data)
 
 
+
+    def _sale_form_values(self, product_id: int, **overrides: str) -> dict[str, str]:
+        from datetime import date
+
+        values = {
+            "product_id": str(product_id),
+            "business_date": date.today().isoformat(),
+            "quantity": "1",
+            "note": "Counter sale",
+        }
+        values.update(overrides)
+        return values
+
+    def _receive_batch_via_form(
+        self, product_id: int, *, received_date: str, expiry_date: str,
+        quantity: str, unit_cost: str = "1800",
+    ) -> None:
+        response = self._post_with_csrf(
+            "/batches/new",
+            "/batches/new",
+            self._batch_form_values(
+                product_id,
+                received_date=received_date,
+                expiry_date=expiry_date,
+                quantity_received=quantity,
+                unit_cost=unit_cost,
+            ),
+        )
+        self.assertEqual(response.status_code, 302, response.data.decode("utf-8", errors="replace"))
+
+    def test_sales_pages_explain_setup_and_render_empty_history(self) -> None:
+        self.assertEqual(self.client.get("/sales").status_code, 503)
+        initialize_database(database_path=self.database_path)
+        response = self.client.get("/sales")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Sales history", response.data)
+        self.assertIn(b"No sales recorded yet", response.data)
+        self.assertIn(b"Record your first sale", response.data)
+
+    def test_sale_uses_fefo_and_records_each_batch_movement(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="1")
+        today = date.today()
+        first_received = (today - timedelta(days=20)).isoformat()
+        second_received = (today - timedelta(days=10)).isoformat()
+        soonest_expiry = (today + timedelta(days=5)).isoformat()
+        later_expiry = (today + timedelta(days=15)).isoformat()
+
+        self._receive_batch_via_form(
+            product_id, received_date=first_received, expiry_date=soonest_expiry,
+            quantity="4", unit_cost="1500",
+        )
+        self._receive_batch_via_form(
+            product_id, received_date=second_received, expiry_date=later_expiry,
+            quantity="3", unit_cost="1600",
+        )
+
+        response = self._post_with_csrf(
+            "/sales/new", "/sales/new", self._sale_form_values(product_id, quantity="5")
+        )
+        self.assertEqual(response.status_code, 302, response.data.decode("utf-8", errors="replace"))
+        self.assertEqual(response.headers["Location"], "/sales")
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_balances = connection.execute(
+                """
+                SELECT expiry_date, quantity_remaining
+                FROM stock_batches WHERE product_id = ?
+                ORDER BY expiry_date ASC
+                """,
+                (product_id,),
+            ).fetchall()
+            sale_row = connection.execute(
+                """
+                SELECT si.quantity, si.unit_selling_price, op.operation_type
+                FROM sale_items AS si
+                JOIN sales AS s ON s.id = si.sale_id
+                JOIN stock_operations AS op ON op.id = s.operation_id
+                WHERE si.product_id = ?
+                """,
+                (product_id,),
+            ).fetchone()
+            sale_movements = connection.execute(
+                """
+                SELECT b.expiry_date, sm.quantity_delta
+                FROM stock_movements AS sm
+                JOIN stock_operations AS op ON op.id = sm.operation_id
+                JOIN stock_batches AS b ON b.id = sm.batch_id
+                WHERE sm.product_id = ? AND op.operation_type = 'sale'
+                ORDER BY b.expiry_date ASC
+                """,
+                (product_id,),
+            ).fetchall()
+        finally:
+            connection.close()
+
+        self.assertEqual(
+            batch_balances,
+            [(soonest_expiry, 0), (later_expiry, 2)],
+        )
+        self.assertEqual(sale_row, (5, 3000, "sale"))
+        self.assertEqual(sale_movements, [(soonest_expiry, -4), (later_expiry, -1)])
+
+        response = self.client.get("/sales")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Rp 15.000", response.data)
+        self.assertIn(b"Counter sale", response.data)
+
+    def test_sale_rejects_quantity_above_sellable_stock(self) -> None:
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product()
+        response = self._post_with_csrf(
+            "/sales/new", "/sales/new", self._sale_form_values(product_id, quantity="1")
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Available quantity: 0", response.data)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            sales_count = connection.execute("SELECT COUNT(*) FROM sales").fetchone()[0]
+            movements_count = connection.execute("SELECT COUNT(*) FROM stock_movements").fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(sales_count, 0)
+        self.assertEqual(movements_count, 0)
+
+    def test_sale_cannot_allocate_expired_batch(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="1")
+        self._receive_batch_via_form(
+            product_id,
+            received_date=(date.today() - timedelta(days=10)).isoformat(),
+            expiry_date=(date.today() - timedelta(days=1)).isoformat(),
+            quantity="5",
+        )
+        response = self._post_with_csrf(
+            "/sales/new", "/sales/new", self._sale_form_values(product_id, quantity="1")
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Available quantity: 0", response.data)
+
+    def test_historical_sale_cannot_use_a_batch_received_later(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(tracks_expiry="0")
+        self._receive_batch_via_form(
+            product_id,
+            received_date=date.today().isoformat(),
+            expiry_date="",
+            quantity="5",
+        )
+        earlier_date = (date.today() - timedelta(days=1)).isoformat()
+        response = self._post_with_csrf(
+            "/sales/new", "/sales/new",
+            self._sale_form_values(product_id, business_date=earlier_date, quantity="1"),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Available quantity: 0", response.data)
+
+    def test_sale_rejects_zero_quantity_and_future_business_date(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product()
+        for payload in (
+            self._sale_form_values(product_id, quantity="0"),
+            self._sale_form_values(
+                product_id, business_date=(date.today() + timedelta(days=1)).isoformat()
+            ),
+        ):
+            response = self._post_with_csrf("/sales/new", "/sales/new", payload)
+            self.assertEqual(response.status_code, 400)
+
+    def test_sale_form_rejects_missing_csrf_token(self) -> None:
+        initialize_database(database_path=self.database_path)
+        response = self.client.post("/sales/new", data={
+            "product_id": "1",
+            "business_date": "2026-01-01",
+            "quantity": "1",
+            "note": "",
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_sales_search_filters_product_history(self) -> None:
+        initialize_database(database_path=self.database_path)
+        first_id = self._create_product(name="Mineral Water")
+        second_id = self._create_product(name="Laundry Soap", sku="LS-002")
+        self._post_with_csrf(
+            "/batches/new", "/batches/new", self._batch_form_values(first_id)
+        )
+        self._post_with_csrf(
+            "/batches/new", "/batches/new", self._batch_form_values(second_id)
+        )
+        self._post_with_csrf(
+            "/sales/new", "/sales/new", self._sale_form_values(first_id, quantity="1")
+        )
+        self._post_with_csrf(
+            "/sales/new", "/sales/new", self._sale_form_values(second_id, quantity="1")
+        )
+
+        response = self.client.get("/sales", query_string={"q": "Mineral"})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Mineral Water", response.data)
+        self.assertNotIn(b"Laundry Soap", response.data)
+
+
 if __name__ == "__main__":
     unittest.main()
