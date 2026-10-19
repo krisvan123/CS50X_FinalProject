@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hmac
 import logging
+import math
 import os
 import re
 import secrets
@@ -968,6 +969,206 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             "success",
         )
         return redirect(url_for("batches"))
+
+
+    @app.get("/recommendations")
+    def recommendations():
+        """Estimate restock quantities from recent sales and sellable stock."""
+        if not Path(current_app.config["DATABASE"]).is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        today = date.today()
+        today_iso = today.isoformat()
+        lookback_days = 30
+        minimum_history_days = 7
+        period_start = (today - timedelta(days=lookback_days - 1)).isoformat()
+        search_query = request.args.get("q", "").strip()[:100]
+
+        conditions = ["p.is_archived = 0"]
+        params: list[Any] = [
+            today_iso, today_iso, period_start, today_iso, today_iso,
+        ]
+        if search_query:
+            conditions.append(
+                "(p.name LIKE ? COLLATE NOCASE "
+                "OR COALESCE(p.sku, '') LIKE ? COLLATE NOCASE)"
+            )
+            wildcard_query = f"%{search_query}%"
+            params.extend([wildcard_query, wildcard_query])
+
+        where_sql = " AND ".join(conditions)
+
+        try:
+            connection = database.get_db()
+            rows = connection.execute(
+                f"""
+                WITH current_stock AS (
+                    SELECT
+                        product_id,
+                        SUM(
+                            CASE
+                                WHEN quantity_remaining > 0
+                                     AND received_date <= ?
+                                     AND (expiry_date IS NULL OR expiry_date >= ?)
+                                THEN quantity_remaining
+                                ELSE 0
+                            END
+                        ) AS sellable_stock
+                    FROM stock_batches
+                    GROUP BY product_id
+                ),
+                sales_window AS (
+                    SELECT
+                        si.product_id,
+                        SUM(si.quantity) AS units_sold,
+                        MIN(op.business_date) AS first_sale_in_window
+                    FROM sale_items AS si
+                    JOIN sales AS s ON s.id = si.sale_id
+                    JOIN stock_operations AS op ON op.id = s.operation_id
+                    WHERE op.operation_type = 'sale'
+                      AND op.business_date >= ?
+                      AND op.business_date <= ?
+                    GROUP BY si.product_id
+                ),
+                sales_history AS (
+                    SELECT
+                        si.product_id,
+                        MIN(op.business_date) AS first_sale_ever
+                    FROM sale_items AS si
+                    JOIN sales AS s ON s.id = si.sale_id
+                    JOIN stock_operations AS op ON op.id = s.operation_id
+                    WHERE op.operation_type = 'sale'
+                      AND op.business_date <= ?
+                    GROUP BY si.product_id
+                )
+                SELECT
+                    p.id,
+                    p.name,
+                    p.sku,
+                    p.category,
+                    p.unit,
+                    p.lead_time_days,
+                    p.safety_stock,
+                    COALESCE(cs.sellable_stock, 0) AS sellable_stock,
+                    COALESCE(sw.units_sold, 0) AS units_sold,
+                    sw.first_sale_in_window,
+                    sh.first_sale_ever
+                FROM products AS p
+                LEFT JOIN current_stock AS cs ON cs.product_id = p.id
+                LEFT JOIN sales_window AS sw ON sw.product_id = p.id
+                LEFT JOIN sales_history AS sh ON sh.product_id = p.id
+                WHERE {where_sql}
+                ORDER BY p.name COLLATE NOCASE ASC
+                LIMIT 250
+                """,
+                params,
+            ).fetchall()
+        except (sqlite3.Error, FileNotFoundError):
+            current_app.logger.exception("Unable to calculate restock recommendations.")
+            return render_template(
+                "error.html",
+                title="Restock recommendations unavailable",
+                error_code=503,
+                message=(
+                    "Restock recommendations could not be calculated. Check the database "
+                    "setup and try again. No inventory records were changed."
+                ),
+            ), 503
+
+        product_recommendations: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["sellable_stock"] = int(item["sellable_stock"] or 0)
+            item["units_sold"] = int(item["units_sold"] or 0)
+            item["lead_time_days"] = int(item["lead_time_days"])
+            item["safety_stock"] = int(item["safety_stock"])
+            item["recommendation_ready"] = False
+            item["average_daily_sales"] = None
+            item["target_stock"] = None
+            item["suggested_restock"] = None
+            item["history_days"] = 0
+
+            first_sale_in_window = item["first_sale_in_window"]
+            if not first_sale_in_window:
+                if item["first_sale_ever"]:
+                    item["status"] = "no_recent_sales"
+                    item["status_label"] = "No recent sales"
+                    item["explanation"] = (
+                        "No sales were recorded in the last 30 days. "
+                        "A quantity estimate is withheld to avoid an unsupported recommendation."
+                    )
+                else:
+                    item["status"] = "no_history"
+                    item["status_label"] = "No sales history"
+                    item["explanation"] = (
+                        "Record sales before using a sales-based restock estimate."
+                    )
+                product_recommendations.append(item)
+                continue
+
+            first_sale_date = date.fromisoformat(first_sale_in_window)
+            item["history_days"] = min(
+                lookback_days,
+                max(1, (today - first_sale_date).days + 1),
+            )
+
+            if item["history_days"] < minimum_history_days:
+                item["status"] = "building_history"
+                item["status_label"] = "Building history"
+                item["average_daily_sales"] = item["units_sold"] / item["history_days"]
+                item["explanation"] = (
+                    f"Only {item['history_days']} calendar day(s) of recorded sales are available. "
+                    f"At least {minimum_history_days} days are required for a recommendation."
+                )
+                product_recommendations.append(item)
+                continue
+
+            average_daily_sales = item["units_sold"] / item["history_days"]
+            target_stock = math.ceil(
+                average_daily_sales * item["lead_time_days"] + item["safety_stock"]
+            )
+            suggested_restock = max(0, target_stock - item["sellable_stock"])
+
+            item["status"] = "restock" if suggested_restock > 0 else "sufficient"
+            item["status_label"] = (
+                "Restock suggested" if suggested_restock > 0 else "Stock is sufficient"
+            )
+            item["recommendation_ready"] = True
+            item["average_daily_sales"] = average_daily_sales
+            item["target_stock"] = target_stock
+            item["suggested_restock"] = suggested_restock
+            item["explanation"] = (
+                "Calculated from the observed sales period, product lead time, "
+                "safety stock, and current sellable inventory."
+            )
+            product_recommendations.append(item)
+
+        summary = {
+            "active_products": len(product_recommendations),
+            "restock_products": sum(
+                item["status"] == "restock" for item in product_recommendations
+            ),
+            "suggested_units": sum(
+                item["suggested_restock"] or 0 for item in product_recommendations
+                if item["recommendation_ready"]
+            ),
+            "needs_more_data": sum(
+                item["status"] in {"no_history", "no_recent_sales", "building_history"}
+                for item in product_recommendations
+            ),
+        }
+
+        return render_template(
+            "recommendations/index.html",
+            title="Restock recommendations",
+            recommendations=product_recommendations,
+            summary=summary,
+            search_query=search_query,
+            period_start=period_start,
+            period_end=today_iso,
+            lookback_days=lookback_days,
+            minimum_history_days=minimum_history_days,
+        )
 
     @app.get("/movements")
     def movements():
