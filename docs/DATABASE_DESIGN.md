@@ -137,11 +137,15 @@ Every application database connection must enable SQLite foreign-key enforcement
 
 ## 8. Initialization and Data Safety
 
-The root schema file uses non-destructive table, index, trigger, and view creation statements and seeds the settings row without replacing an existing value. It does not drop tables or delete records.
+Run the Python standard-library initializer from the repository root:
 
-From the repository root, a fresh local database can be initialized with the SQLite command-line tool using the schema file. For example, run the SQLite CLI for a new database and execute the schema file with its .read command. This assumes the CLI is installed; Phase 4 will also define a Python initialization path.
+    python init_db.py
 
-This is an initial schema, not a migration system. IF NOT EXISTS does not update a table that already exists with an older definition. Once meaningful data exists, schema changes require explicit reviewed migrations or a disposable test database. Never delete a populated database just to make a schema update work.
+The script creates the local database at instance/warungwise.db, applies schema.sql, checks SQLite integrity and foreign-key consistency, and reports success. It refuses to overwrite an existing database. It inserts the default expiry-warning setting but does not create demo products or transactions. The instance directory and local database files are excluded from source control by .gitignore.
+
+The schema file uses non-destructive table, index, trigger, and view creation statements. It does not drop tables or delete records. SQLite foreign-key enforcement is connection-specific, so the future application database helper must run PRAGMA foreign_keys = ON for every connection, not only during initialization.
+
+This is an initial schema, not a migration system. IF NOT EXISTS does not update a table that already exists with an older definition. Once meaningful data exists, schema changes require explicit reviewed migrations or a disposable test database. The initializer refuses to reuse an existing database; do not delete a populated database just to make a schema update work.
 
 ## 9. Transaction Workflows for Implementation
 
