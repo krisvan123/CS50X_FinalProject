@@ -1099,6 +1099,20 @@ class WarungWiseAppTests(unittest.TestCase):
 
 
 
+
+    def _two_clients_with_shared_csrf(self, page_path: str):
+        first_client = self.app.test_client()
+        page = first_client.get(page_path)
+        self.assertEqual(page.status_code, 200, page.data.decode("utf-8", errors="replace"))
+        csrf_match = re.search(rb'name="csrf_token"\\s+value="([^"]+)"', page.data)
+        self.assertIsNotNone(csrf_match, "Expected the page to render a CSRF token.")
+        csrf = csrf_match.group(1).decode("ascii")
+
+        second_client = self.app.test_client()
+        with second_client.session_transaction() as saved_session:
+            saved_session["_csrf_token"] = csrf
+        return first_client, second_client, csrf
+
     def test_concurrent_receipt_submissions_with_same_token_are_serialized(self) -> None:
         """Two simultaneous POSTs of one receipt create only one operation."""
         product_id = self._create_product()
@@ -1184,6 +1198,56 @@ class WarungWiseAppTests(unittest.TestCase):
         finally:
             connection.close()
 
+
+
+    def test_concurrent_distinct_sales_cannot_oversell_one_batch(self) -> None:
+        from datetime import date
+
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        first_client, second_client, csrf = self._two_clients_with_shared_csrf("/sales/new")
+        today = date.today().isoformat()
+        tokens = [
+            "concurrent-sale-request-00000000000000000001",
+            "concurrent-sale-request-00000000000000000002",
+        ]
+        barrier = Barrier(2)
+
+        def submit(client, request_token):
+            barrier.wait(timeout=5)
+            return client.post("/sales/new", data={
+                "csrf_token": csrf,
+                "request_token": request_token,
+                "product_id": str(product_id),
+                "business_date": today,
+                "quantity": "4",
+                "note": "Concurrent sale safety test",
+            })
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(submit, first_client, tokens[0]),
+                pool.submit(submit, second_client, tokens[1]),
+            ]
+            responses = [future.result(timeout=10) for future in futures]
+
+        self.assertEqual(sorted(response.status_code for response in responses), [302, 400])
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sales").fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_operations WHERE operation_type = 'sale'"
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT difference FROM v_batch_balance_audit WHERE product_id = ?",
+                (product_id,),
+            ).fetchone()[0], 0)
+        finally:
+            connection.close()
 
     def test_backdated_sale_cannot_make_later_batch_balance_negative(self) -> None:
         from datetime import date, timedelta
@@ -1390,6 +1454,62 @@ class WarungWiseAppTests(unittest.TestCase):
         finally:
             connection.close()
 
+
+
+    def test_concurrent_distinct_disposals_cannot_overdraw_one_batch(self) -> None:
+        from datetime import date
+
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        first_client, second_client, csrf = self._two_clients_with_shared_csrf("/stock-actions/new")
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute(
+                "SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+
+        tokens = [
+            "concurrent-stock-action-00000000000000000001",
+            "concurrent-stock-action-00000000000000000002",
+        ]
+        barrier = Barrier(2)
+
+        def submit(client, request_token):
+            barrier.wait(timeout=5)
+            return client.post("/stock-actions/new", data={
+                "csrf_token": csrf,
+                "request_token": request_token,
+                "batch_id": str(batch_id),
+                "operation_type": "disposal",
+                "business_date": date.today().isoformat(),
+                "quantity": "4",
+                "reason": "Concurrent disposal safety test",
+                "note": "",
+            })
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(submit, first_client, tokens[0]),
+                pool.submit(submit, second_client, tokens[1]),
+            ]
+            responses = [future.result(timeout=10) for future in futures]
+
+        self.assertEqual(sorted(response.status_code for response in responses), [302, 400])
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_operations WHERE operation_type = 'disposal'"
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT difference FROM v_batch_balance_audit WHERE batch_id = ?", (batch_id,)
+            ).fetchone()[0], 0)
+        finally:
+            connection.close()
 
     def test_stock_action_duplicate_submission_does_not_apply_twice(self) -> None:
         product_id = self._create_product()
