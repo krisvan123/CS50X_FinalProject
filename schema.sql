@@ -296,12 +296,17 @@ CREATE VIEW IF NOT EXISTS v_batch_balance_audit AS
 SELECT
     b.id AS batch_id,
     b.product_id,
+    b.quantity_received,
     b.quantity_remaining AS stored_quantity,
     COALESCE(SUM(m.quantity_delta), 0) AS ledger_quantity,
-    b.quantity_remaining - COALESCE(SUM(m.quantity_delta), 0) AS difference
+    b.quantity_remaining - COALESCE(SUM(m.quantity_delta), 0) AS difference,
+    COALESCE(SUM(CASE WHEN op.operation_type = 'receipt' THEN m.quantity_delta ELSE 0 END), 0) AS ledger_received_quantity,
+    b.quantity_received - COALESCE(SUM(CASE WHEN op.operation_type = 'receipt' THEN m.quantity_delta ELSE 0 END), 0) AS receipt_difference,
+    COALESCE(SUM(CASE WHEN op.operation_type = 'receipt' THEN 1 ELSE 0 END), 0) AS receipt_movement_count
 FROM stock_batches b
 LEFT JOIN stock_movements m ON m.batch_id = b.id
-GROUP BY b.id, b.product_id, b.quantity_remaining;
+LEFT JOIN stock_operations op ON op.id = m.operation_id
+GROUP BY b.id, b.product_id, b.quantity_received, b.quantity_remaining;
 
 CREATE VIEW IF NOT EXISTS v_sale_item_allocation_audit AS
 SELECT
