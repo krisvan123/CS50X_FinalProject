@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS stock_operations (
     operation_type TEXT NOT NULL CHECK (operation_type IN ('receipt', 'sale', 'disposal', 'adjustment_out')),
     request_token TEXT NOT NULL UNIQUE CHECK (length(trim(request_token)) > 0),
     occurred_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    business_date TEXT NOT NULL CHECK (
+        length(business_date) = 10 AND date(business_date, '+0 days') = business_date
+    ),
     reason TEXT,
     note TEXT,
     CHECK (
@@ -203,6 +206,11 @@ BEGIN
                      WHERE s.operation_id = NEW.operation_id
                        AND si.id = NEW.sale_item_id
                        AND si.product_id = NEW.product_id
+                 )
+                 OR (
+                     (SELECT tracks_expiry FROM products WHERE id = NEW.product_id) = 1
+                     AND (SELECT expiry_date FROM stock_batches WHERE id = NEW.batch_id)
+                         < (SELECT business_date FROM stock_operations WHERE id = NEW.operation_id)
                  )
              )
         THEN RAISE(ABORT, 'invalid sale movement')
