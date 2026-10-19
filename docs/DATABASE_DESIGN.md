@@ -102,7 +102,7 @@ The database checks that:
 
 Two audit views support verification:
 
-- **v_batch_balance_audit** compares the stored batch balance against the sum of movement deltas. Its difference should be zero for every batch.
+- **v_batch_balance_audit** compares the stored batch balance against the sum of movement deltas and also checks that exactly one receipt movement matches the batch's original received quantity. The balance difference and receipt difference should be zero, and the receipt movement count should be one.
 - **v_sale_item_allocation_audit** compares each sale line's quantity with the total allocated quantity from batches. Its difference should be zero after a completed sale.
 
 SQLite constraints cannot enforce all cross-row invariants at transaction commit. The application service must ensure that each sale line's allocated quantity equals the quantity sold and that all sale lines succeed together. Automated tests will verify the audit views.
