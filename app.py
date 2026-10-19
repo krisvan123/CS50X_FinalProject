@@ -37,7 +37,11 @@ def _csrf_is_valid() -> bool:
     """Validate a form token without exposing token details to the client."""
     expected = session.get("_csrf_token")
     supplied = request.form.get("csrf_token", "")
-    return isinstance(expected, str) and bool(supplied) and hmac.compare_digest(expected, supplied)
+    return (
+        isinstance(expected, str)
+        and bool(supplied)
+        and hmac.compare_digest(expected, supplied)
+    )
 
 
 def _empty_product_form() -> dict[str, str]:
@@ -65,7 +69,9 @@ def _parse_product_form(form: Any) -> tuple[dict[str, str], dict[str, str], dict
     form_data["sku"] = form_data["sku"].upper()
     form_data["tracks_expiry"] = str(form.get("tracks_expiry", "0")).strip()
 
-    numeric_fields = ("cost_price", "selling_price", "minimum_stock", "lead_time_days", "safety_stock")
+    numeric_fields = (
+        "cost_price", "selling_price", "minimum_stock", "lead_time_days", "safety_stock"
+    )
     for field in numeric_fields:
         form_data[field] = str(form.get(field, "")).strip()
 
@@ -92,7 +98,11 @@ def _parse_product_form(form: Any) -> tuple[dict[str, str], dict[str, str], dict
         if not re.fullmatch(r"[0-9]+", raw_value):
             errors[field] = message
             continue
-        value = int(raw_value)
+        try:
+            value = int(raw_value)
+        except ValueError:
+            errors[field] = message
+            continue
         if value < minimum or value > sqlite_integer_max:
             errors[field] = message
             continue

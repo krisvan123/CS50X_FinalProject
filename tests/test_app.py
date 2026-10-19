@@ -346,5 +346,23 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertIn(b"Invalid request", response.data)
 
 
+
+    def test_extremely_long_numeric_input_is_rejected(self) -> None:
+        initialize_database(database_path=self.database_path)
+        response = self._post_with_csrf(
+            "/products/new",
+            "/products/new",
+            self._product_form_values(cost_price="9" * 5000),
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Cost price must be a whole number", response.data)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            count = connection.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        finally:
+            connection.close()
+        self.assertEqual(count, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
