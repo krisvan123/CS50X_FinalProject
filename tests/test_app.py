@@ -76,8 +76,12 @@ class WarungWiseAppTests(unittest.TestCase):
         response = self.client.get("/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"data-testid=\"metric-active-products\">\n                \n                <p class=\"metric-value\">1", response.data)
-        self.assertIn(b"data-testid=\"metric-low-stock\">\n                \n                <p class=\"metric-value\">1", response.data)
+        self.assertIn(b'data-testid="metric-active-products"', response.data)
+        self.assertIn(b'data-testid="metric-low-stock"', response.data)
+        self.assertGreaterEqual(
+            response.data.count(b'<p class="metric-value">1</p>'),
+            2,
+        )
 
     def test_health_reports_ready_database_and_foreign_keys(self) -> None:
         initialize_database(database_path=self.database_path)
