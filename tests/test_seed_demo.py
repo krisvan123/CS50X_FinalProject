@@ -173,6 +173,21 @@ class WarungWiseDemoSeedTests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_vercel_public_assets_match_local_source_files(self) -> None:
+        project_root = Path(__file__).resolve().parents[1]
+        asset_paths = (
+            Path("css/styles.css"),
+            Path("js/app.js"),
+        )
+
+        for relative_path in asset_paths:
+            with self.subTest(asset=str(relative_path)):
+                local_asset = project_root / "static" / relative_path
+                public_asset = project_root / "public" / "static" / relative_path
+                self.assertTrue(local_asset.is_file(), str(local_asset))
+                self.assertTrue(public_asset.is_file(), str(public_asset))
+                self.assertEqual(public_asset.read_bytes(), local_asset.read_bytes())
+
     def test_primary_pages_render_with_seeded_demo_database(self) -> None:
         seed_demo_database(self.database_path)
         app = create_app({

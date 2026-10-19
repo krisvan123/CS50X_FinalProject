@@ -542,7 +542,9 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
     if test_config is not None:
         app.config.update(test_config)
 
-    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+    # Vercel's project bundle is read-only; its public demo database lives in /tmp.
+    if os.environ.get("VERCEL") != "1":
+        Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     database.init_app(app)
 
     @app.after_request
