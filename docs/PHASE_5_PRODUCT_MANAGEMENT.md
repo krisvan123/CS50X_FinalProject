@@ -58,7 +58,7 @@ Run the test suite from the repository root after creating and activating the Py
 
 The expanded tests cover the existing Phase 4 smoke behavior and product catalogue setup, product creation and normalization, invalid values, case-insensitive SKU uniqueness, search and category filtering, editing, safe archiving, expiry-setting restrictions, and CSRF enforcement.
 
-**Verification status:** Tests are committed as executable checks, but no runtime pass is claimed until the suite is executed in an environment with Flask installed. The archive stock guard is also enforced by schema.sql; the application check provides a user-facing explanation before the database rejects an invalid update.
+**Verification status:** All 20 tests passed in GitHub Actions on Python 3.12 ([run details](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39202850512)). The archive stock guard is also enforced by schema.sql; the application check provides a user-facing explanation before the database rejects an invalid update. Running the test command locally is still recommended.
 
 ## 7. Acceptance Checklist
 
@@ -71,4 +71,5 @@ The expanded tests cover the existing Phase 4 smoke behavior and product catalog
 - [x] Archive is POST-only, CSRF-protected, and blocked while stock remains.
 - [x] Archive preserves the product and related historical records.
 - [x] Tests and setup documentation are included.
-- [ ] Local runtime test suite passes; run it on the developer's machine before treating the milestone as fully verified.
+- [x] GitHub Actions passed the full 20-test suite on Python 3.12.
+- [ ] The same test suite has also been run on the developer's local workstation.

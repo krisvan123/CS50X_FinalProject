@@ -98,7 +98,7 @@ Run the smoke tests from the repository root:
 
 The tests use temporary SQLite databases and do not operate on the user's local application database. They cover the first-time setup page, readiness when no database exists, loading an empty dashboard after initialization, database-backed product counts, foreign-key readiness, and not-found behavior.
 
-**Verification status:** The test suite has been added, but it has not been executed in the current authoring environment because Flask is not installed there and package installation was unavailable. Do not treat the suite as passing until the commands above have been run successfully in an environment with the declared dependency installed. No end-to-end workflow test is claimed by this phase.
+**Verification status:** The shared automated test suite passed in GitHub Actions on Python 3.12, including all six Phase 4 smoke tests ([run details](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39202850512)). Running the same command locally is still recommended to confirm the developer's workstation setup. No end-to-end stock-receipt or sales workflow test is claimed by this phase.
 
 ## 7. Phase 4 Acceptance Checklist
 
@@ -114,4 +114,4 @@ The tests use temporary SQLite databases and do not operate on the user's local 
 
 ## 8. Follow-on Milestone
 
-Product Management is specified and implemented in [Phase 5 — Product Management](PHASE_5_PRODUCT_MANAGEMENT.md). The Phase 4 runtime verification status above remains unchanged until the local smoke tests are run.
+Product Management is specified and implemented in [Phase 5 — Product Management](PHASE_5_PRODUCT_MANAGEMENT.md). The shared Phase 4 smoke tests have passed in CI; local workstation verification remains a separate check.
