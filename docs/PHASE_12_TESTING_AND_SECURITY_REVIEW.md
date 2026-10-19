@@ -1,8 +1,8 @@
 # Phase 12 — Testing and Security Review
 
 **Status:** In progress — automated CI gate passes; manual browser and final security review are still required.  
-**Current reviewed code commit:** `de09bd5a683c4e590417d1d59d0a249fc4d7ec47`  
-**Automated verification:** [GitHub Actions run 39216671672](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216671672) — **64 tests passed** on Python 3.12 on October 19, 2026.
+**Latest automated-tested code commit:** `89195226929185c8a98e402f9ad29ceed2807ae1`  
+**Automated verification:** [GitHub Actions run 39219272191](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39219272191) — **68 tests passed** on Python 3.12 on October 19, 2026.
 
 ## 1. Phase 12 goal
 
@@ -36,7 +36,7 @@ Confirm that the core inventory workflows preserve their data invariants under i
 | Disposal/correction workflows | Reasons are required; overdraws are rejected; batch audit remains balanced | Pass |
 | Expiry-warning settings | Valid value persists and out-of-range values are rejected | Pass |
 
-The latest CI run completed all **64** tests on Python 3.12. The full output is linked above. This is evidence for those tested scenarios, not proof that every possible interleaving or environment has been tested.
+The latest CI run completed all **68** tests on Python 3.12. The full output is linked above. This is evidence for those tested scenarios, not proof that every possible interleaving or environment has been tested.
 
 ## 4. Manual browser checklist — still outstanding
 
@@ -65,10 +65,10 @@ Complete this checklist in the local application after backing up the existing d
 ## 6. Exit criteria
 
 Phase 12 is not complete until:
-1. The 62-test CI suite continues to pass for the final code commit.
+1. The 68-test CI suite continues to pass for the final code commit.
 2. The manual browser checklist above is actually completed and recorded.
 3. No known inventory balance/audit mismatch remains in mixed-workflow tests.
 4. Error paths and the local setup procedure are understood and checked by the project author.
 5. The project author can explain the database invariants, FEFO logic, historical sales check, CSRF/request tokens, and report calculations.
 
-The 62-test result does not guarantee a 9.8/10 or 10/10 score, is not an official CS50 grade, and is not a penetration-test certificate. It is a verified checkpoint for the tested behavior only.
+The 68-test result does not guarantee a 9.8/10 or 10/10 score, is not an official CS50 grade, and is not a penetration-test certificate. It is a verified checkpoint for the tested behavior only.
