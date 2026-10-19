@@ -1,6 +1,6 @@
 # Phase 9 — Restock Recommendations
 
-**Status:** Implemented; the latest automated verification is in progress.  
+**Status:** Implemented and verified by [GitHub Actions on Python 3.12](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39208986771) — 43 automated tests passed.  
 **Scope:** Explainable, rule-based product restock estimates using recent sales, lead time, safety stock, and sellable inventory.
 
 ## User workflow
@@ -41,7 +41,7 @@ Run:
 python -m unittest discover -s tests -v
 ```
 
-Review a product with at least 7 days of recorded sale history, one with no recent sales, and one with only a very short sales history. Confirm that expired stock is excluded and recommendations never change the inventory ledger.
+Verification on October 19, 2026: GitHub Actions ran all 43 automated tests successfully on Python 3.12, including tests for a calculated restock quantity, missing history, and less than 7 days of history. Also review a product with no recent sales and confirm expired stock is excluded and recommendations never change the inventory ledger.
 
 ## AI assistance note
 
