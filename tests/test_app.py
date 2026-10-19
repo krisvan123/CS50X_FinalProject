@@ -764,10 +764,12 @@ class WarungWiseAppTests(unittest.TestCase):
             "/batches/new", "/batches/new", self._batch_form_values(second_id)
         )
         self._post_with_csrf(
-            "/sales/new", "/sales/new", self._sale_form_values(first_id, quantity="1")
+            "/sales/new", "/sales/new",
+            self._sale_form_values(first_id, quantity="1"), follow_redirects=True,
         )
         self._post_with_csrf(
-            "/sales/new", "/sales/new", self._sale_form_values(second_id, quantity="1")
+            "/sales/new", "/sales/new",
+            self._sale_form_values(second_id, quantity="1"), follow_redirects=True,
         )
 
         response = self.client.get("/sales", query_string={"q": "Mineral"})
