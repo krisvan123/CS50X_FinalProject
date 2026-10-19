@@ -1146,6 +1146,21 @@ class WarungWiseAppTests(unittest.TestCase):
                 ) VALUES (?, ?, ?, ?, -8)
                 """, (sale_operation_id, product_id, batch_id, sale_item_id),
             )
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (
+                    operation_type, request_token, business_date, reason
+                ) VALUES ('adjustment_in', ?, ?, ?)
+                """, ("historical-safe-adjust", date.today().isoformat(), "Later physical count"),
+            )
+            adjustment_operation_id = cursor.lastrowid
+            connection.execute(
+                """
+                INSERT INTO stock_movements (
+                    operation_id, product_id, batch_id, quantity_delta
+                ) VALUES (?, ?, ?, 5)
+                """, (adjustment_operation_id, product_id, batch_id, 5),
+            )
             connection.commit()
         finally:
             connection.close()
@@ -1281,6 +1296,46 @@ class WarungWiseAppTests(unittest.TestCase):
         try:
             self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)).fetchone()[0], 5)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_operations WHERE operation_type = 'disposal'").fetchone()[0], 0)
+        finally:
+            connection.close()
+
+
+    def test_stock_action_duplicate_submission_does_not_apply_twice(self) -> None:
+        product_id = self._create_product()
+        self._add_receipt_batch(product_id)
+        form = self.client.get("/stock-actions/new")
+        self.assertEqual(form.status_code, 200)
+        csrf = re.search(rb'name="csrf_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        token = re.search(rb'name="request_token"\s+value="([^"]+)"', form.data).group(1).decode()
+        connection = sqlite3.connect(self.database_path)
+        try:
+            batch_id = connection.execute(
+                "SELECT id FROM stock_batches WHERE product_id = ?", (product_id,)
+            ).fetchone()[0]
+        finally:
+            connection.close()
+        from datetime import date
+        payload = {
+            "csrf_token": csrf, "request_token": token, "batch_id": str(batch_id),
+            "operation_type": "disposal", "business_date": date.today().isoformat(),
+            "quantity": "2", "reason": "Expired goods", "note": "Discard once",
+        }
+        first = self.client.post("/stock-actions/new", data=payload)
+        second = self.client.post("/stock-actions/new", data=payload)
+        self.assertEqual(first.status_code, 302)
+        self.assertEqual(second.status_code, 302)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)
+            ).fetchone()[0], 3)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_operations WHERE request_token = ?", (token,)
+            ).fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM stock_movements WHERE operation_id = (SELECT id FROM stock_operations WHERE request_token = ?)",
+                (token,),
+            ).fetchone()[0], 1)
         finally:
             connection.close()
 
