@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">PRODUCT CATALOGUE</p>
+        <h1>{{ form_heading }}</h1>
+        <p class="page-subtitle">{{ form_intro }}</p>
+    </div>
+    <a class="button button-secondary" href="{{ url_for('products') }}">Back to products</a>
+</section>
+
+<section class="content-card product-form-card">
+    <form method="post" action="{% if is_edit %}{{ url_for('edit_product', product_id=product_id) }}{% else %}{{ url_for('new_product') }}{% endif %}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if errors.get('_form') %}<div class="form-error-summary" role="alert">{{ errors['_form'] }}</div>{% endif %}
+
+        <div class="form-section-heading">
+            <h2>Product identity</h2>
+            <p>Name and SKU help distinguish items in the catalogue.</p>
+        </div>
+        <div class="product-form-grid">
+            <div class="form-field">
+                <label for="name">Product name <span aria-hidden="true">*</span></label>
+                <input id="name" name="name" type="text" maxlength="120" required value="{{ form_data.get('name', '') }}" {% if errors.get('name') %}aria-invalid="true" aria-describedby="name-error"{% endif %}>
+                {% if errors.get('name') %}<p class="field-error" id="name-error">{{ errors['name'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="sku">SKU <span class="optional-label">Optional</span></label>
+                <input id="sku" name="sku" type="text" maxlength="50" value="{{ form_data.get('sku', '') }}" autocomplete="off" {% if errors.get('sku') %}aria-invalid="true" aria-describedby="sku-error"{% endif %}>
+                <p class="field-help">Must be unique across products; letters are stored in uppercase.</p>
+                {% if errors.get('sku') %}<p class="field-error" id="sku-error">{{ errors['sku'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="category">Category <span class="optional-label">Optional</span></label>
+                <input id="category" name="category" type="text" maxlength="80" value="{{ form_data.get('category', '') }}" placeholder="e.g. Beverages" {% if errors.get('category') %}aria-invalid="true" aria-describedby="category-error"{% endif %}>
+                {% if errors.get('category') %}<p class="field-error" id="category-error">{{ errors['category'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="unit">Inventory unit <span aria-hidden="true">*</span></label>
+                <input id="unit" name="unit" type="text" maxlength="30" required value="{{ form_data.get('unit', '') }}" placeholder="e.g. bottle, pack, piece" {% if errors.get('unit') %}aria-invalid="true" aria-describedby="unit-error"{% endif %}>
+                {% if errors.get('unit') %}<p class="field-error" id="unit-error">{{ errors['unit'] }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-section-heading">
+            <h2>Pricing and stock rules</h2>
+            <p>Enter whole Indonesian rupiah amounts without thousand separators.</p>
+        </div>
+        <div class="product-form-grid">
+            <div class="form-field">
+                <label for="cost_price">Reference cost (IDR) <span aria-hidden="true">*</span></label>
+                <input id="cost_price" name="cost_price" type="number" min="0" step="1" required value="{{ form_data.get('cost_price', '0') }}" {% if errors.get('cost_price') %}aria-invalid="true" aria-describedby="cost-price-error"{% endif %}>
+                {% if errors.get('cost_price') %}<p class="field-error" id="cost-price-error">{{ errors['cost_price'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="selling_price">Selling price (IDR) <span aria-hidden="true">*</span></label>
+                <input id="selling_price" name="selling_price" type="number" min="1" step="1" required value="{{ form_data.get('selling_price', '1') }}" {% if errors.get('selling_price') %}aria-invalid="true" aria-describedby="selling-price-error"{% endif %}>
+                {% if errors.get('selling_price') %}<p class="field-error" id="selling-price-error">{{ errors['selling_price'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="minimum_stock">Minimum-stock threshold <span aria-hidden="true">*</span></label>
+                <input id="minimum_stock" name="minimum_stock" type="number" min="0" step="1" required value="{{ form_data.get('minimum_stock', '0') }}" {% if errors.get('minimum_stock') %}aria-invalid="true" aria-describedby="minimum-stock-error"{% endif %}>
+                {% if errors.get('minimum_stock') %}<p class="field-error" id="minimum-stock-error">{{ errors['minimum_stock'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="lead_time_days">Restock lead time (days) <span aria-hidden="true">*</span></label>
+                <input id="lead_time_days" name="lead_time_days" type="number" min="1" step="1" required value="{{ form_data.get('lead_time_days', '1') }}" {% if errors.get('lead_time_days') %}aria-invalid="true" aria-describedby="lead-time-error"{% endif %}>
+                {% if errors.get('lead_time_days') %}<p class="field-error" id="lead-time-error">{{ errors['lead_time_days'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="safety_stock">Safety-stock quantity <span aria-hidden="true">*</span></label>
+                <input id="safety_stock" name="safety_stock" type="number" min="0" step="1" required value="{{ form_data.get('safety_stock', '0') }}" {% if errors.get('safety_stock') %}aria-invalid="true" aria-describedby="safety-stock-error"{% endif %}>
+                {% if errors.get('safety_stock') %}<p class="field-error" id="safety-stock-error">{{ errors['safety_stock'] }}</p>{% endif %}
+            </div>
+            <div class="form-field">
+                <label for="tracks_expiry">Track expiry dates? <span aria-hidden="true">*</span></label>
+                <select id="tracks_expiry" name="tracks_expiry" required {% if errors.get('tracks_expiry') %}aria-invalid="true" aria-describedby="tracks-expiry-error"{% endif %}>
+                    <option value="1" {% if form_data.get('tracks_expiry', '0') == '1' %}selected{% endif %}>Yes — expiry date required for batches</option>
+                    <option value="0" {% if form_data.get('tracks_expiry', '0') == '0' %}selected{% endif %}>No — expiry is not tracked</option>
+                </select>
+                {% if errors.get('tracks_expiry') %}<p class="field-error" id="tracks-expiry-error">{{ errors['tracks_expiry'] }}</p>{% endif %}
+                {% if is_edit %}<p class="field-help">This setting cannot change after a stock batch has been created.</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <p><span aria-hidden="true">*</span> Required fields. Historical sales and stock movements are preserved.</p>
+            <div class="form-actions">
+                <a class="button button-secondary" href="{{ url_for('products') }}">Cancel</a>
+                <button class="button button-primary" type="submit">{% if is_edit %}Save changes{% else %}Create product{% endif %}</button>
+            </div>
+        </div>
+    </form>
+</section>
+{% endblock %}

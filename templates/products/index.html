@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">CATALOGUE</p>
+        <h1>Product management</h1>
+        <p class="page-subtitle">Maintain product details, pricing, stock thresholds, and expiry-tracking preferences.</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('new_product') }}">+ Add product</a>
+</section>
+
+<section class="content-card product-filter-card" aria-label="Search and filter products">
+    <form class="product-filter-form" method="get" action="{{ url_for('products') }}">
+        <div class="filter-search">
+            <label for="product-search">Search products</label>
+            <input id="product-search" name="q" type="search" maxlength="100" value="{{ search_query }}" placeholder="Name, SKU, or category">
+        </div>
+        <div class="filter-field">
+            <label for="product-status">Status</label>
+            <select id="product-status" name="status">
+                <option value="active" {% if status == "active" %}selected{% endif %}>Active products</option>
+                <option value="archived" {% if status == "archived" %}selected{% endif %}>Archived products</option>
+                <option value="all" {% if status == "all" %}selected{% endif %}>All products</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label for="product-category">Category</label>
+            <select id="product-category" name="category">
+                <option value="">All categories</option>
+                {% for item in categories %}
+                <option value="{{ item }}" {% if selected_category == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button class="button button-primary" type="submit">Apply filters</button>
+            <a class="button button-secondary" href="{{ url_for('products') }}">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="section-block product-list-section" aria-labelledby="product-list-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="product-list-title">{% if status == "archived" %}Archived products{% elif status == "all" %}All products{% else %}Active products{% endif %}</h2>
+            <p>Showing {{ products|length }}{% if products|length == 250 %} or more{% endif %} product records. A maximum of 250 rows is shown per search.</p>
+        </div>
+        <span class="section-meta">Stock values are read from batches</span>
+    </div>
+
+    {% if products %}
+    <div class="product-table-wrap">
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th scope="col">Product</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Selling price</th>
+                    <th scope="col">Remaining stock</th>
+                    <th scope="col">Expiry tracking</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td><div class="product-name-cell"><strong>{{ product.name }}</strong><span>{{ product.sku or "No SKU" }} · per {{ product.unit }}</span></div></td>
+                    <td>{{ product.category or "Uncategorized" }}</td>
+                    <td class="money-cell">{{ product.selling_price|idr }}</td>
+                    <td><span class="stock-count">{{ product.remaining_stock }}</span><span class="table-subtext">unit(s)</span></td>
+                    <td>{% if product.tracks_expiry %}<span class="status-label status-neutral">Tracked</span>{% else %}<span class="status-label status-neutral">Not tracked</span>{% endif %}</td>
+                    <td>{% if product.is_archived %}<span class="status-label status-archived">Archived</span>{% else %}<span class="status-label status-active">Active</span>{% endif %}</td>
+                    <td>
+                        <div class="product-row-actions">
+                            <a class="button button-secondary button-small" href="{{ url_for('edit_product', product_id=product.id) }}">Edit</a>
+                            {% if not product.is_archived %}
+                                {% if product.remaining_stock > 0 %}
+                                <span class="action-hint">Clear remaining stock before archiving.</span>
+                                {% else %}
+                                <form method="post" action="{{ url_for('archive_product', product_id=product.id) }}" onsubmit="return confirm('Archive this product? Historical records will be preserved.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="button button-danger button-small" type="submit">Archive</button>
+                                </form>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state product-empty-state">
+        <span class="empty-state-icon" aria-hidden="true">▤</span>
+        {% if search_query or selected_category %}
+        <strong>No products match these filters</strong>
+        <p>Try another search term or reset the filters to see the catalogue.</p>
+        <a class="button button-secondary" href="{{ url_for('products') }}">Reset filters</a>
+        {% elif status == "archived" %}
+        <strong>No archived products</strong>
+        <p>Products will appear here after they are archived.</p>
+        {% else %}
+        <strong>No products yet</strong>
+        <p>Create your first product record. Stock quantities will be recorded through the batch-receipt workflow in a later phase.</p>
+        <a class="button button-primary" href="{{ url_for('new_product') }}">Add your first product</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</section>
+
+<p class="product-data-note">Product records are stored locally in SQLite. Archiving preserves historical records and is blocked while any batch still has a remaining quantity.</p>
+{% endblock %}

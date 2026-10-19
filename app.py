@@ -1,20 +1,117 @@
-"""WarungWise Flask application entry point.
-
-The current phase provides a read-only dashboard foundation and a health
-endpoint. Product and stock-changing routes will be added in later phases.
-"""
+"""WarungWise Flask application entry point and product-management workflows."""
 from __future__ import annotations
 
+import hmac
 import logging
 import os
+import re
+import secrets
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, current_app, jsonify, render_template
+from flask import (
+    Flask, abort, current_app, flash, jsonify, redirect, render_template,
+    request, session, url_for,
+)
 
 import database
+
+
+
+
+PRODUCT_TEXT_LIMITS = {"name": 120, "sku": 50, "category": 80, "unit": 30}
+
+
+def _get_csrf_token() -> str:
+    """Return a session-bound token for protecting state-changing forms."""
+    token = session.get("_csrf_token")
+    if not isinstance(token, str) or not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def _csrf_is_valid() -> bool:
+    """Validate a form token without exposing token details to the client."""
+    expected = session.get("_csrf_token")
+    supplied = request.form.get("csrf_token", "")
+    return isinstance(expected, str) and bool(supplied) and hmac.compare_digest(expected, supplied)
+
+
+def _empty_product_form() -> dict[str, str]:
+    """Provide safe initial values for the create-product form."""
+    return {
+        "name": "", "sku": "", "category": "", "unit": "piece",
+        "cost_price": "0", "selling_price": "1", "minimum_stock": "0",
+        "lead_time_days": "1", "safety_stock": "0", "tracks_expiry": "0",
+    }
+
+
+def _product_form_from_row(product: sqlite3.Row) -> dict[str, str]:
+    """Convert a database row into display-safe form values."""
+    fields = (
+        "name", "sku", "category", "unit", "cost_price", "selling_price",
+        "minimum_stock", "lead_time_days", "safety_stock", "tracks_expiry",
+    )
+    return {field: "" if product[field] is None else str(product[field]) for field in fields}
+
+
+def _parse_product_form(form: Any) -> tuple[dict[str, str], dict[str, str], dict[str, Any]]:
+    """Normalize product form values and return field-level validation errors."""
+    text_fields = ("name", "sku", "category", "unit")
+    form_data = {field: str(form.get(field, "")).strip() for field in text_fields}
+    form_data["sku"] = form_data["sku"].upper()
+    form_data["tracks_expiry"] = str(form.get("tracks_expiry", "0")).strip()
+
+    numeric_fields = ("cost_price", "selling_price", "minimum_stock", "lead_time_days", "safety_stock")
+    for field in numeric_fields:
+        form_data[field] = str(form.get(field, "")).strip()
+
+    errors: dict[str, str] = {}
+    if not form_data["name"]:
+        errors["name"] = "Enter a product name."
+    if not form_data["unit"]:
+        errors["unit"] = "Enter an inventory unit."
+    for field, maximum in PRODUCT_TEXT_LIMITS.items():
+        if len(form_data[field]) > maximum:
+            errors[field] = f"Use no more than {maximum} characters."
+
+    constraints = {
+        "cost_price": (0, "Cost price must be a whole number of zero or more."),
+        "selling_price": (1, "Selling price must be a whole number greater than zero."),
+        "minimum_stock": (0, "Minimum stock must be a whole number of zero or more."),
+        "lead_time_days": (1, "Lead time must be a whole number of at least one day."),
+        "safety_stock": (0, "Safety stock must be a whole number of zero or more."),
+    }
+    parsed_numbers: dict[str, int] = {}
+    sqlite_integer_max = 9_223_372_036_854_775_807
+    for field, (minimum, message) in constraints.items():
+        raw_value = form_data[field]
+        if not re.fullmatch(r"[0-9]+", raw_value):
+            errors[field] = message
+            continue
+        value = int(raw_value)
+        if value < minimum or value > sqlite_integer_max:
+            errors[field] = message
+            continue
+        parsed_numbers[field] = value
+
+    if form_data["tracks_expiry"] not in {"0", "1"}:
+        errors["tracks_expiry"] = "Choose whether this product tracks expiry dates."
+
+    product_data: dict[str, Any] = {
+        "name": form_data["name"],
+        "sku": form_data["sku"] or None,
+        "category": form_data["category"] or None,
+        "unit": form_data["unit"],
+    }
+    product_data.update(parsed_numbers)
+    if form_data["tracks_expiry"] in {"0", "1"}:
+        product_data["tracks_expiry"] = int(form_data["tracks_expiry"])
+    return form_data, errors, product_data
+
 
 
 def _load_dashboard_data(connection: sqlite3.Connection) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -210,6 +307,331 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             recent_movements=recent_movements,
         )
 
+    @app.context_processor
+    def provide_csrf_token():
+        """Expose a session-bound CSRF token generator to templates."""
+        return {"csrf_token": _get_csrf_token}
+
+    @app.get("/products")
+    def products():
+        """List, search, and filter active or archived product records."""
+        database_path = Path(current_app.config["DATABASE"])
+        if not database_path.is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        search_query = request.args.get("q", "").strip()[:100]
+        status = request.args.get("status", "active")
+        if status not in {"active", "archived", "all"}:
+            status = "active"
+        category = request.args.get("category", "").strip()[:PRODUCT_TEXT_LIMITS["category"]]
+
+        conditions: list[str] = []
+        parameters: list[Any] = []
+        if status != "all":
+            conditions.append("p.is_archived = ?")
+            parameters.append(1 if status == "archived" else 0)
+        if search_query:
+            conditions.append(
+                "(p.name LIKE ? COLLATE NOCASE "
+                "OR COALESCE(p.sku, '') LIKE ? COLLATE NOCASE "
+                "OR COALESCE(p.category, '') LIKE ? COLLATE NOCASE)"
+            )
+            wildcard_query = f"%{search_query}%"
+            parameters.extend([wildcard_query, wildcard_query, wildcard_query])
+        if category:
+            conditions.append("p.category = ?")
+            parameters.append(category)
+
+        where_sql = " AND ".join(conditions) if conditions else "1 = 1"
+        try:
+            connection = database.get_db()
+            product_rows = connection.execute(
+                f"""
+                SELECT p.*, COALESCE(SUM(b.quantity_remaining), 0) AS remaining_stock
+                FROM products AS p
+                LEFT JOIN stock_batches AS b ON b.product_id = p.id
+                WHERE {where_sql}
+                GROUP BY p.id
+                ORDER BY p.is_archived ASC, p.name COLLATE NOCASE ASC
+                LIMIT 250
+                """,
+                parameters,
+            ).fetchall()
+            category_rows = connection.execute(
+                """
+                SELECT DISTINCT category FROM products
+                WHERE category IS NOT NULL AND length(trim(category)) > 0
+                ORDER BY category COLLATE NOCASE
+                """
+            ).fetchall()
+        except (sqlite3.Error, FileNotFoundError):
+            current_app.logger.exception("Unable to load the product catalogue.")
+            return render_template(
+                "error.html",
+                title="Product catalogue unavailable",
+                error_code=503,
+                message="The product catalogue could not be loaded. Check the local database setup and try again.",
+            ), 503
+
+        return render_template(
+            "products/index.html",
+            title="Product management",
+            products=product_rows,
+            categories=[row["category"] for row in category_rows],
+            search_query=search_query,
+            status=status,
+            selected_category=category,
+        )
+
+    @app.route("/products/new", methods=["GET", "POST"])
+    def new_product():
+        """Create a product after server-side validation."""
+        database_path = Path(current_app.config["DATABASE"])
+        if not database_path.is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        if request.method == "GET":
+            return render_template(
+                "products/form.html",
+                title="Add product",
+                form_heading="Add a product",
+                form_intro="Create a product record before receiving stock.",
+                form_data=_empty_product_form(),
+                errors={},
+                is_edit=False,
+                product_id=None,
+            )
+
+        if not _csrf_is_valid():
+            abort(400)
+
+        form_data, errors, product_data = _parse_product_form(request.form)
+        connection = database.get_db()
+        if not errors and product_data["sku"] is not None:
+            duplicate = connection.execute(
+                "SELECT 1 FROM products WHERE sku = ? COLLATE NOCASE",
+                (product_data["sku"],),
+            ).fetchone()
+            if duplicate:
+                errors["sku"] = "That SKU is already used by another product."
+
+        if errors:
+            return render_template(
+                "products/form.html",
+                title="Add product",
+                form_heading="Add a product",
+                form_intro="Review the highlighted fields and try again.",
+                form_data=form_data,
+                errors=errors,
+                is_edit=False,
+                product_id=None,
+            ), 400
+
+        try:
+            connection.execute(
+                """
+                INSERT INTO products (
+                    name, sku, category, unit, cost_price, selling_price,
+                    minimum_stock, lead_time_days, safety_stock, tracks_expiry
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    product_data["name"], product_data["sku"], product_data["category"],
+                    product_data["unit"], product_data["cost_price"], product_data["selling_price"],
+                    product_data["minimum_stock"], product_data["lead_time_days"],
+                    product_data["safety_stock"], product_data["tracks_expiry"],
+                ),
+            )
+            connection.commit()
+        except sqlite3.IntegrityError as error:
+            connection.rollback()
+            if "sku" in str(error).lower():
+                errors["sku"] = "That SKU is already used by another product."
+                return render_template(
+                    "products/form.html",
+                    title="Add product",
+                    form_heading="Add a product",
+                    form_intro="Review the highlighted fields and try again.",
+                    form_data=form_data,
+                    errors=errors,
+                    is_edit=False,
+                    product_id=None,
+                ), 400
+            current_app.logger.exception("Product creation was rejected by the database.")
+            return render_template(
+                "error.html",
+                title="Product could not be saved",
+                error_code=400,
+                message="The product could not be saved. Review its details and try again.",
+            ), 400
+
+        flash("Product created successfully.", "success")
+        return redirect(url_for("products"))
+
+    @app.route("/products/<int:product_id>/edit", methods=["GET", "POST"])
+    def edit_product(product_id: int):
+        """Edit product details without rewriting historical transactions."""
+        database_path = Path(current_app.config["DATABASE"])
+        if not database_path.is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        product = connection.execute(
+            "SELECT * FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if product is None:
+            abort(404)
+
+        if request.method == "GET":
+            return render_template(
+                "products/form.html",
+                title="Edit product",
+                form_heading="Edit product",
+                form_intro="Changes apply to the product's current settings. Historical sale prices remain unchanged.",
+                form_data=_product_form_from_row(product),
+                errors={},
+                is_edit=True,
+                product_id=product_id,
+            )
+
+        if not _csrf_is_valid():
+            abort(400)
+
+        form_data, errors, product_data = _parse_product_form(request.form)
+        if not errors and product_data["sku"] is not None:
+            duplicate = connection.execute(
+                """
+                SELECT 1 FROM products
+                WHERE sku = ? COLLATE NOCASE AND id <> ?
+                """,
+                (product_data["sku"], product_id),
+            ).fetchone()
+            if duplicate:
+                errors["sku"] = "That SKU is already used by another product."
+
+        if not errors and product_data["tracks_expiry"] != int(product["tracks_expiry"]):
+            has_batches = connection.execute(
+                "SELECT 1 FROM stock_batches WHERE product_id = ? LIMIT 1",
+                (product_id,),
+            ).fetchone()
+            if has_batches:
+                errors["tracks_expiry"] = (
+                    "Expiry tracking cannot be changed after a stock batch has been created."
+                )
+
+        if errors:
+            return render_template(
+                "products/form.html",
+                title="Edit product",
+                form_heading="Edit product",
+                form_intro="Review the highlighted fields and try again.",
+                form_data=form_data,
+                errors=errors,
+                is_edit=True,
+                product_id=product_id,
+            ), 400
+
+        try:
+            connection.execute(
+                """
+                UPDATE products
+                SET name = ?, sku = ?, category = ?, unit = ?,
+                    cost_price = ?, selling_price = ?, minimum_stock = ?,
+                    lead_time_days = ?, safety_stock = ?, tracks_expiry = ?,
+                    updated_at_utc = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                WHERE id = ?
+                """,
+                (
+                    product_data["name"], product_data["sku"], product_data["category"],
+                    product_data["unit"], product_data["cost_price"], product_data["selling_price"],
+                    product_data["minimum_stock"], product_data["lead_time_days"],
+                    product_data["safety_stock"], product_data["tracks_expiry"], product_id,
+                ),
+            )
+            connection.commit()
+        except sqlite3.IntegrityError as error:
+            connection.rollback()
+            if "sku" in str(error).lower():
+                errors["sku"] = "That SKU is already used by another product."
+                return render_template(
+                    "products/form.html",
+                    title="Edit product",
+                    form_heading="Edit product",
+                    form_intro="Review the highlighted fields and try again.",
+                    form_data=form_data,
+                    errors=errors,
+                    is_edit=True,
+                    product_id=product_id,
+                ), 400
+            current_app.logger.exception("Product update was rejected by the database.")
+            return render_template(
+                "error.html",
+                title="Product could not be updated",
+                error_code=400,
+                message="The product could not be updated. Review its details and try again.",
+            ), 400
+
+        flash("Product updated successfully.", "success")
+        return redirect(url_for("products"))
+
+    @app.post("/products/<int:product_id>/archive")
+    def archive_product(product_id: int):
+        """Archive a product only when no batch has remaining quantity."""
+        if not _csrf_is_valid():
+            abort(400)
+
+        database_path = Path(current_app.config["DATABASE"])
+        if not database_path.is_file():
+            return render_template("setup.html", title="Initialize database"), 503
+
+        connection = database.get_db()
+        product = connection.execute(
+            "SELECT id, is_archived FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if product is None:
+            abort(404)
+        if product["is_archived"]:
+            flash("This product is already archived.", "info")
+            return redirect(url_for("products", status="archived"))
+
+        remaining_stock = connection.execute(
+            """
+            SELECT COALESCE(SUM(quantity_remaining), 0) AS quantity
+            FROM stock_batches
+            WHERE product_id = ? AND quantity_remaining > 0
+            """,
+            (product_id,),
+        ).fetchone()["quantity"]
+        if remaining_stock > 0:
+            flash(
+                "This product cannot be archived while stock remains. Record a sale, documented correction, or disposal first.",
+                "warning",
+            )
+            return redirect(url_for("products"))
+
+        try:
+            connection.execute(
+                """
+                UPDATE products
+                SET is_archived = 1,
+                    updated_at_utc = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+                WHERE id = ? AND is_archived = 0
+                """,
+                (product_id,),
+            )
+            connection.commit()
+        except sqlite3.IntegrityError:
+            connection.rollback()
+            flash(
+                "The database rejected the archive because the product may still have stock. Refresh the catalogue and try again.",
+                "warning",
+            )
+            return redirect(url_for("products"))
+
+        flash("Product archived. Historical records have been preserved.", "success")
+        return redirect(url_for("products"))
+
     @app.get("/health")
     def health():
         """Return a small local readiness check without exposing database details."""
@@ -232,6 +654,15 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             return jsonify({"status": "foreign_keys_disabled"}), 503
 
         return jsonify({"status": "ok"}), 200
+
+    @app.errorhandler(400)
+    def bad_request(_error):
+        return render_template(
+            "error.html",
+            title="Invalid request",
+            error_code=400,
+            message="The request could not be verified. Refresh the page and try again.",
+        ), 400
 
     @app.errorhandler(404)
     def not_found(_error):

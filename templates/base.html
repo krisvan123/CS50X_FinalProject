@@ -29,15 +29,14 @@
 
         <div class="sidebar-section-label">WORKSPACE</div>
         <nav class="sidebar-nav">
-            <a class="nav-item active" href="{{ url_for('index') }}" aria-current="page">
+            <a class="nav-item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▦</span>
                 <span>Dashboard</span>
             </a>
-            <span class="nav-item disabled" aria-disabled="true">
+            <a class="nav-item {% if request.endpoint in ('products', 'new_product', 'edit_product') %}active{% endif %}" href="{{ url_for('products') }}" {% if request.endpoint in ('products', 'new_product', 'edit_product') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▤</span>
                 <span>Products</span>
-                <span class="nav-status">Next</span>
-            </span>
+            </a>
             <span class="nav-item disabled" aria-disabled="true">
                 <span class="nav-icon" aria-hidden="true">▣</span>
                 <span>Stock batches</span>
@@ -79,6 +78,15 @@
         </header>
 
         <main id="main-content" class="main-content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-stack" aria-live="polite" aria-atomic="true">
+                    {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}" role="status">{{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
             {% block content %}{% endblock %}
         </main>
 

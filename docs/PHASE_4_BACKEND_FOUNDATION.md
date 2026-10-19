@@ -112,6 +112,6 @@ The tests use temporary SQLite databases and do not operate on the user's local 
 - Tests are present and their status is reported honestly.
 - Product, sales, receipt, and disposal workflows remain explicitly out of scope for this phase.
 
-## 8. Next Phase
+## 8. Follow-on Milestone
 
-Phase 5 will implement Product Management: list, create, edit, search, validation, and archiving. Those forms will use server-side validation and parameterized SQL, and archive behavior must preserve historical records and must be blocked while a product still has remaining stock.
+Product Management is specified and implemented in [Phase 5 — Product Management](PHASE_5_PRODUCT_MANAGEMENT.md). The Phase 4 runtime verification status above remains unchanged until the local smoke tests are run.
