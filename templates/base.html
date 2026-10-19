@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='7') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='8') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -56,11 +56,10 @@
                 <span class="nav-icon" aria-hidden="true">⇄</span>
                 <span>Movements</span>
             </a>
-            <span class="nav-item disabled" aria-disabled="true">
+            <a class="nav-item {% if request.endpoint in ('reports', 'export_report') %}active{% endif %}" href="{{ url_for('reports') }}" {% if request.endpoint in ('reports', 'export_report') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▥</span>
                 <span>Reports</span>
-                <span class="nav-status">Later</span>
-            </span>
+            </a>
         </nav>
 
         <div class="sidebar-spacer"></div>
@@ -105,6 +104,6 @@
         </footer>
     </div>
 </div>
-<script src="{{ url_for('static', filename='js/app.js', v='3') }}" defer></script>
+<script src="{{ url_for('static', filename='js/app.js', v='4') }}" defer></script>
 </body>
 </html>
