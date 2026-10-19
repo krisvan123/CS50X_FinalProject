@@ -52,15 +52,13 @@ A concise walk-through can use this order:
 
 Only perform additional writes against the separate demo database during rehearsal. Do not use invented values to imply real customer transactions, real business performance, or validated forecasts.
 
-## 4. Optional Render portfolio preview
+## 4. Optional Vercel Hobby portfolio preview
 
-The repository includes a `render.yaml` Blueprint for a free Render web service. The public instance uses `wsgi.py`, Gunicorn, `WARUNGWISE_DATABASE=instance/warungwise-demo.db`, `WARUNGWISE_DEMO_READ_ONLY=true`, and a generated `WARUNGWISE_SECRET_KEY`.
+The repository is configured for deployment on Vercel's free Hobby plan for personal, non-commercial projects. From the Vercel dashboard, choose **Add New → Project**, import `krisvan123/CS50X_FinalProject`, keep the project root at the repository root, select Hobby, and deploy. The app entry point is `wsgi:app`; static assets are served from `public/static/`.
 
-The global request guard rejects all non-read-only HTTP methods when public demo mode is enabled. The shared layout labels the instance as a read-only public demo. The startup command runs `python seed_demo.py` before launching Gunicorn, so a fresh ephemeral filesystem receives the fictional sample records.
+On Vercel, `wsgi.py` uses the writable temporary path `/tmp/warungwise-demo.db`, seeds only fictional data, and enables `DEMO_READ_ONLY`. A request guard rejects all methods other than GET, HEAD, and OPTIONS. The public demo is intended for viewing the inventory and reporting pages; use the local demo for recording sales and other changes.
 
-**Important limitations:** Render's free filesystem is ephemeral and can be cleared when the service sleeps, restarts, or redeploys. The public site is designed for browsing and portfolio evaluation only; perform write-workflow demonstrations locally. Do not store real inventory, personal information, or secrets in the public demo.
-
-Deployment still requires the project owner to sign in to Render, connect the GitHub repository, and create the Blueprint. The repository cannot create that account-level service on the owner's behalf.
+**Important limitations:** Vercel Functions do not offer durable local SQLite storage. Temporary database content may be recreated on cold starts or different instances. Choose the free Hobby plan, avoid paid add-ons, and do not enter real inventory, personal information, or secrets into the public preview. The hosted demo has no user authentication and is not a production inventory service.
 
 ## 5. Phase 13 exit checklist
 

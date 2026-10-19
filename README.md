@@ -108,20 +108,21 @@ The automated test suite runs on Python 3.12 through [GitHub Actions](https://gi
 | `/settings` | Expiry-warning setting |
 | `/health` | Local readiness check |
 
-## Optional public demo deployment
+## Optional public demo deployment (Vercel Hobby)
 
-A read-only preview can be deployed to Render using the repository's `render.yaml` Blueprint. The configuration installs the production WSGI server, creates a fictional sample database when the service starts, supplies a generated session secret, and blocks every non-read-only HTTP method in public demo mode.
+The repository is prepared for Vercel's **Hobby plan**, which is free for personal, non-commercial projects within the plan's included usage limits. The app is deployed as a read-only portfolio preview with fictional data. No paid database or paid integration is required. See the [official Hobby plan](https://vercel.com/docs/plans/hobby) and [Flask deployment guide](https://vercel.com/docs/frameworks/backend/flask).
 
-To deploy:
+### Deploy from GitHub
 
-1. Sign in to Render and choose **New + → Blueprint**.
-2. Connect the GitHub repository `krisvan123/CS50X_FinalProject` and follow the Blueprint creation prompts.
-3. Confirm that the service uses the Free plan, then create the resources and wait for the first deploy.
-4. Open the assigned `onrender.com` URL and check the dashboard, products, batches, reports, and CSV downloads.
+1. Sign in to [Vercel](https://vercel.com/) using your GitHub account.
+2. From the dashboard, choose **Add New → Project** and import `krisvan123/CS50X_FinalProject`.
+3. Keep the project root set to the repository root. Vercel uses `pyproject.toml` to select `wsgi:app`, `requirements.txt` for Flask, and `public/static/` for the CSS and JavaScript assets.
+4. Select the **Hobby** plan. Do not upgrade to Pro or add paid integrations for this demo.
+5. Deploy, then open the assigned `vercel.app` URL. Check Dashboard, Products, Stock batches, Restock advice, Reports, and CSV exports.
 
-This hosted version is a **public read-only portfolio preview**, not a production inventory system. It contains only synthetic data and rejects changes to business records. The free Render filesystem is ephemeral: the service sleeps after inactivity, and its local SQLite file may be lost when it sleeps, restarts, or redeploys. The startup command seeds the demo database again when necessary. Free services may take about a minute to wake up. See the [Render Flask deployment guide](https://render.com/docs/deploy-flask) and [free service limitations](https://render.com/docs/free).
+At startup, `wsgi.py` seeds the fictional dataset into `/tmp/warungwise-demo.db` and enables `WARUNGWISE_DEMO_READ_ONLY`. All non-read-only HTTP methods are rejected. Vercel Functions have a read-only project filesystem and a writable temporary `/tmp` area, so this database is **not durable** and may be recreated for another function instance or cold start. The public demo is for viewing, not storing inventory.
 
-Use the local demo database for the video walkthrough when you need to demonstrate changing stock or recording sales. Do not enter real shop records, credentials, or personal information into the public demo. This configuration is for a portfolio preview only and does not add authentication or make the application suitable for real public business use.
+For a demonstration in which you create products, record sales, or change stock, use the local demo database with the instructions above. Do not enter real shop records, credentials, or personal information into the public preview. The public instance has no authentication and is not a production inventory service.
 
 ## Scope and limitations
 

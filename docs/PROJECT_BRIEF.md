@@ -3,7 +3,7 @@
 **Project title:** WarungWise  
 **Tagline:** *Smarter Stock. Less Waste. Better Decisions.*  
 **Document status:** Living project brief, updated after implementation  
-**Implementation status:** Core workflows and reports are implemented. The latest automated suite reports 68 passing tests before public-deployment regression checks; manual browser, security, and submission checks remain.
+**Implementation status:** Core workflows and reports are implemented. The latest automated suite reports 71 passing tests, including the Vercel static-asset consistency check; manual browser, deployment, security, and submission checks remain.
 
 ## 1. Executive Summary
 
