@@ -1,4 +1,7 @@
 """SQLite connection helpers for WarungWise."""
+
+# AI-use disclosure: ChatGPT assisted with drafting/refining this connection helper.
+# The project author should understand request-scoped connections and teardown behavior.
 from __future__ import annotations
 
 import sqlite3

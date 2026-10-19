@@ -3,6 +3,9 @@
 This script deliberately refuses to overwrite an existing database.
 It uses only Python's standard library.
 """
+
+# AI-use disclosure: ChatGPT assisted with drafting/refining the safe initializer.
+# The project author should understand its non-destructive behavior and checks.
 from __future__ import annotations
 
 from pathlib import Path
