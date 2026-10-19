@@ -74,7 +74,7 @@ def initialize_database(
 def main() -> int:
     try:
         database_path = initialize_database()
-    except (FileExistsError, FileNotFoundError, RuntimeError, sqlite3.Error) as error:
+    except (OSError, RuntimeError, sqlite3.Error) as error:
         print(f"Database initialization failed: {error}")
         return 1
 
