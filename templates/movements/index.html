@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">INVENTORY CONTROL / AUDIT TRAIL</p>
+        <h1>Stock movements</h1>
+        <p class="page-subtitle">A chronological ledger of stock entering or leaving each batch. Historical movements are read-only.</p>
+    </div>
+    <a class="button button-primary" href="{{ url_for('new_batch') }}">＋ Receive stock</a>
+</section>
+
+<section class="content-card movement-filter-card" aria-label="Search and filter stock movements">
+    <form class="movement-filter-form" method="get" action="{{ url_for('movements') }}">
+        <div class="filter-search">
+            <label for="movement-search">Search ledger</label>
+            <input id="movement-search" name="q" type="search" maxlength="100" value="{{ search_query }}" placeholder="Product name, SKU, or batch number">
+        </div>
+        <div class="filter-field">
+            <label for="movement-type">Movement type</label>
+            <select id="movement-type" name="type">
+                <option value="all" {% if operation_type == "all" %}selected{% endif %}>All movement types</option>
+                <option value="receipt" {% if operation_type == "receipt" %}selected{% endif %}>Stock received</option>
+                <option value="sale" {% if operation_type == "sale" %}selected{% endif %}>Sale</option>
+                <option value="disposal" {% if operation_type == "disposal" %}selected{% endif %}>Disposal</option>
+                <option value="adjustment_in" {% if operation_type == "adjustment_in" %}selected{% endif %}>Inbound adjustment</option>
+                <option value="adjustment_out" {% if operation_type == "adjustment_out" %}selected{% endif %}>Outbound adjustment</option>
+            </select>
+        </div>
+        <button class="button button-primary" type="submit">Apply filters</button>
+        {% if search_query or operation_type != "all" %}
+        <a class="button button-secondary" href="{{ url_for('movements') }}">Clear</a>
+        {% endif %}
+    </form>
+</section>
+
+<section class="content-card movement-table-card">
+    <div class="table-card-heading">
+        <div><h2>Movement ledger</h2><p>Newest activity first. Showing up to 300 records.</p></div>
+        <span class="result-count">{{ movements|length }} shown</span>
+    </div>
+    <div class="table-responsive">
+        <table class="movement-table">
+            <thead>
+                <tr>
+                    <th scope="col">Recorded at (UTC)</th>
+                    <th scope="col">Movement</th>
+                    <th scope="col">Product / batch</th>
+                    <th scope="col">Business date</th>
+                    <th scope="col">Quantity change</th>
+                    <th scope="col">Note</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for movement in movements %}
+                <tr data-testid="movement-row">
+                    <td><span class="timestamp-main">{{ movement.occurred_at_utc|replace('T', ' ')|replace('Z', '') }}</span><small>Movement #{{ movement.movement_id }}</small></td>
+                    <td>
+                        {% if movement.operation_type == "receipt" %}
+                        <span class="movement-type-chip movement-type-in">＋ {{ movement.operation_label }}</span>
+                        {% elif movement.operation_type in ("sale", "disposal", "adjustment_out") %}
+                        <span class="movement-type-chip movement-type-out">− {{ movement.operation_label }}</span>
+                        {% else %}
+                        <span class="movement-type-chip movement-type-neutral">{{ movement.operation_label }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong class="table-primary-text">{{ movement.product_name }}</strong><small>Batch #{{ "%05d"|format(movement.batch_id) }} · {{ movement.unit }}{% if movement.expiry_date %} · Exp. {{ movement.expiry_date }}{% endif %}</small></td>
+                    <td>{{ movement.business_date }}</td>
+                    <td><strong class="quantity-change {% if movement.quantity_delta > 0 %}quantity-positive{% else %}quantity-negative{% endif %}">{{ movement.quantity_display }}</strong> <span class="unit-caption">{{ movement.unit }}</span></td>
+                    <td><span class="movement-note">{{ movement.note or movement.reason or "—" }}</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6"><div class="empty-state"><span class="empty-state-icon" aria-hidden="true">⇄</span><strong>No stock movements found</strong><p>{% if search_query or operation_type != "all" %}Try changing the search or movement type.{% else %}When you receive a delivery, its receipt and quantity change will be recorded here automatically.{% endif %}</p>{% if not search_query and operation_type == "all" %}<a class="button button-primary" href="{{ url_for('new_batch') }}">Record a stock receipt</a>{% endif %}</div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="table-footnote">Movement entries are append-only records. This page does not edit or delete historical stock activity.</div>
+</section>
+{% endblock %}
