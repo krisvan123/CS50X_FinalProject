@@ -859,10 +859,10 @@ class WarungWiseAppTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Bottled Tea", response.data)
-        self.assertIn(b"18 piece", response.data)
-        self.assertIn(b"1.2 piece/day", response.data)
+        self.assertIn(b"18 bottle", response.data)
+        self.assertIn(b"1.2 bottle/day", response.data)
         self.assertIn(b"15 observed calendar day(s)", response.data)
-        self.assertIn(b"9 piece", response.data)
+        self.assertIn(b"9 bottle", response.data)
         self.assertIn(b"7", response.data)
         self.assertIn(b"Restock suggested", response.data)
 
