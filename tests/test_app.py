@@ -5,6 +5,7 @@ All tests use temporary SQLite databases and do not touch local user data.
 """
 from __future__ import annotations
 
+import csv
 import re
 import sqlite3
 import tempfile
@@ -923,7 +924,7 @@ class WarungWiseAppTests(unittest.TestCase):
         response = self.client.get("/reports")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn(b"Reports &amp; analytics", response.data)
+        self.assertIn(b"Reports & analytics", response.data)
         self.assertIn(b"No sales in this reporting period", response.data)
         self.assertIn(b"Sales transactions", response.data)
         self.assertIn(b"Current inventory snapshot", response.data)
@@ -1005,7 +1006,7 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertEqual(response.mimetype, "text/csv")
         self.assertIn("attachment; filename=\\"warungwise_sales_", response.headers["Content-Disposition"])
         csv_text = response.get_data(as_text=True).lstrip("\\ufeff")
-        rows = list(__import__("csv").reader(csv_text.splitlines()))
+        rows = list(csv.reader(csv_text.splitlines()))
         self.assertEqual(len(rows), 2, "Only the header and today's transaction should be exported.")
         self.assertIn("Gross Total (IDR)", rows[0])
         self.assertEqual(rows[1][3], "Tea Bottle")
