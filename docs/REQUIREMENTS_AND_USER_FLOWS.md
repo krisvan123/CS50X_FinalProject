@@ -48,7 +48,7 @@ The initial application is a local, single-shop, single-user web application. It
 
 - **FR-PROD-01:** The operator can create, view, edit, search, filter, and archive products.
 - **FR-PROD-02:** A product includes a name, optional SKU, optional category, inventory unit, cost price, selling price, minimum-stock threshold, restock lead time in days, and safety-stock quantity.
-- **FR-PROD-03:** Products can be configured to track expiry or not. This setting determines whether a batch expiry date is required and whether expiry alerts apply. The final representation will be formalized during Phase 3.
+- **FR-PROD-03:** Each product can be configured to track expiry. This boolean setting determines whether a stock batch must have an expiry date and whether expiry alerts apply. The implemented representation is stored as `products.tracks_expiry`; it cannot be changed after a batch has been created.
 - **FR-PROD-04:** A non-empty SKU must be unique without regard to letter case.
 - **FR-PROD-05:** Archiving preserves all historical sales and stock movements. A product with any batch quantity remaining cannot be archived until that quantity has been properly sold, adjusted, or disposed of.
 - **FR-PROD-06:** Archived products cannot be selected for new stock receipts or sales. Their historical data remains available to relevant reports.
@@ -96,7 +96,7 @@ The initial application is a local, single-shop, single-user web application. It
 
 ### 4.6 Dashboard, Restock Recommendations, Reports, and CSV
 
-These are final-target features and will be implemented only after the MVP is stable.
+These final-target features have since been implemented in the application. Their definitions below describe the expected behavior; current limitations and the outstanding quality gate are recorded in the root README and `docs/PRE_PHASE_12_REVIEW.md`.
 
 - **FR-REP-01:** Dashboard metrics must be derived from saved records, not hard-coded totals.
 - **FR-REP-02:** Sales revenue is calculated from saved sale-line quantities and sale-price snapshots for the selected period.
@@ -292,7 +292,7 @@ Numeric values must be parsed and validated before database writes. Database acc
 
 ## 8. Acceptance Scenarios
 
-These scenarios define future test cases. They are test plans, not claims that tests have already been executed.
+These acceptance scenarios define expected behavior. Many are now covered by `tests/test_app.py` and the GitHub Actions suite; additional visual, concurrent-request, and security checks remain for Phase 12.
 
 | ID | Given | When | Then |
 |---|---|---|---|

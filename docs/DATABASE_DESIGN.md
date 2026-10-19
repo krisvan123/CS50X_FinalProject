@@ -133,7 +133,7 @@ The schema includes:
 - a case-insensitive unique SKU index and indexes for product search, category, batch product/expiry lookup, and stock-movement lookup;
 - triggers for receipt linkage, archived-product restrictions, locked expiry-tracking settings, sale-operation linkage, batch balance updates, expired-sale rejection, and immutable operation/movement history.
 
-Every application database connection must enable SQLite foreign-key enforcement. The schema enables it for the connection executing the file; the future database helper must also run PRAGMA foreign_keys = ON for each connection.
+Every application database connection must enable SQLite foreign-key enforcement. The schema enables it for the connection executing the file, and `database.py` also runs `PRAGMA foreign_keys = ON` for every application connection.
 
 ## 8. Initialization and Data Safety
 
