@@ -75,12 +75,12 @@ The initial application is a local, single-shop, single-user web application. It
 
 ### 4.4 Stock Adjustments and Disposal
 
-- **FR-STOCK-01:** The operator can remove a quantity from a specific batch when stock is damaged, expired, missing, or otherwise requires a documented correction.
-- **FR-STOCK-02:** A removal requires a positive whole-number quantity, a selected batch, a reason, a timestamp, and an optional note.
-- **FR-STOCK-03:** The removal quantity cannot exceed the batch's remaining quantity.
+- **FR-STOCK-01:** The operator can record a batch-level quantity correction in either direction when a documented stock-count discrepancy is identified; each correction must reference an existing batch and include a reason.
+- **FR-STOCK-02:** A stock correction requires a positive whole-number absolute quantity, a selected batch, a reason, a timestamp, and an optional note. Its operation type determines whether the quantity is added or removed.
+- **FR-STOCK-03:** A removal cannot exceed the batch's remaining quantity. A positive correction applies only to an existing batch and records a reason; it does not create a new receipt batch.
 - **FR-STOCK-04:** Disposal of damaged or expired goods reduces remaining inventory and creates a stock-movement record atomically.
 - **FR-STOCK-05:** The recorded value of disposed goods uses the disposed quantity and applicable batch cost. An expiry warning alone is not a realized disposal loss.
-- **FR-STOCK-06:** Positive stock additions use the stock-receipt workflow so batch and cost information are captured; they cannot be entered as unexplained positive adjustments.
+- **FR-STOCK-06:** New deliveries must use the stock-receipt workflow so a new batch and its cost are recorded. A positive adjustment is allowed only to correct a documented count discrepancy on an existing batch and must include a reason; it cannot be used as an unexplained way to enter a new delivery.
 - **FR-STOCK-07:** A stock operation cannot leave a batch with a negative remaining quantity.
 
 ### 4.5 Inventory Status and Expiry Alerts
@@ -218,6 +218,20 @@ Numeric values must be parsed and validated before database writes. Database acc
 **Expected result:** Remaining quantity decreases by exactly the entered amount, and the event appears in history.  
 **Failure cases:** Missing reason, zero or excessive quantity, invalid batch, or database failure.  
 **Integrity rule:** A failed operation must not alter stock. Disposal value is recorded only for goods actually disposed of.
+
+### Additional Flow — Correct a Stock Count (Positive Adjustment)
+
+**Goal:** Record a justified count correction for an existing batch without rewriting its history.
+
+1. The operator selects an existing batch and opens Stock Count Correction.
+2. The operator enters a positive whole-number adjustment quantity and a required reason explaining the discrepancy.
+3. The server confirms the product and batch exist, the product is active, and the submitted values are valid.
+4. In one database transaction, the application creates an adjustment operation and a positive movement linked to the existing batch.
+5. The operator sees the updated quantity and the new movement in the batch history.
+
+**Expected result:** The batch balance changes by the stated quantity and the reason remains auditable.  
+**Failure cases:** Missing reason, invalid quantity, archived product, invalid batch, or database error.  
+**Integrity rule:** This workflow corrects an existing batch count only. A new delivery must be received through the stock-receipt workflow and create a new batch.
 
 ### Flow G — Archive a Product
 
