@@ -7,6 +7,9 @@
     const revealNodes = document.querySelectorAll([
         ".page-heading",
         ".welcome-strip",
+        ".recommendation-summary-card",
+        ".recommendation-formula-card",
+        ".recommendation-table-card",
         ".section-block",
         ".metric-card",
         ".dashboard-alert-grid > .content-card",
@@ -48,7 +51,7 @@
 
     if (!prefersReducedMotion) {
         const numberFormat = new Intl.NumberFormat("id-ID");
-        document.querySelectorAll(".metric-value").forEach(function (node) {
+        document.querySelectorAll(".metric-value, .recommendation-summary-card [data-testid]").forEach(function (node) {
             const target = Number((node.textContent || "").trim().replace(/[^0-9-]/g, ""));
             if (!Number.isFinite(target) || target <= 0 || node.dataset.countAnimated === "true") {
                 return;
