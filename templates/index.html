@@ -122,7 +122,7 @@
                 <h2>Expiry watchlist</h2>
                 <p>Expired and upcoming expiry batches with remaining stock.</p>
             </div>
-            <span class="watchlist-count watchlist-count-amber">{{ expiry_alerts|length }}</span>
+            <span class="watchlist-count watchlist-count-amber">{{ stats.expired_batches + stats.near_expiry_batches }}</span>
         </div>
 
         {% if expiry_alerts %}
