@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading dashboard-heading">
+    <div>
+        <p class="eyebrow">OVERVIEW</p>
+        <h1>Inventory overview</h1>
+        <p class="page-subtitle">A clear view of your stock position, expiry risks, and today's recorded sales.</p>
+    </div>
+    <div class="date-chip">
+        <span class="date-chip-label">BUSINESS DATE</span>
+        <strong>{{ stats.business_date }}</strong>
+    </div>
+</section>
+
+<section class="welcome-strip" aria-label="Database status">
+    <div class="welcome-icon" aria-hidden="true">✓</div>
+    <div>
+        <strong>Your local database is connected</strong>
+        <p>Dashboard figures are calculated from saved records. Add products and stock after the relevant workflows are implemented.</p>
+    </div>
+    <span class="status-pill"><span aria-hidden="true"></span> Database ready</span>
+</section>
+
+<section class="section-block" aria-labelledby="inventory-metrics-title">
+    <div class="section-heading">
+        <div>
+            <h2 id="inventory-metrics-title">Inventory health</h2>
+            <p>Current counts based on the local database.</p>
+        </div>
+        <span class="section-meta">Live database values</span>
+    </div>
+
+    <div class="row g-3 metric-grid">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <article class="metric-card" data-testid="metric-active-products">
+                <div class="metric-top">
+                    <span class="metric-label">Active products</span>
+                    <span class="metric-icon icon-green" aria-hidden="true">▤</span>
+                </div>
+                <p class="metric-value">{{ stats.active_products }}</p>
+                <p class="metric-caption">Products not archived</p>
+            </article>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <article class="metric-card" data-testid="metric-low-stock">
+                <div class="metric-top">
+                    <span class="metric-label">Low-stock products</span>
+                    <span class="metric-icon icon-amber" aria-hidden="true">↓</span>
+                </div>
+                <p class="metric-value">{{ stats.low_stock_products }}</p>
+                <p class="metric-caption">At or below minimum stock</p>
+            </article>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <article class="metric-card" data-testid="metric-near-expiry">
+                <div class="metric-top">
+                    <span class="metric-label">Near-expiry batches</span>
+                    <span class="metric-icon icon-blue" aria-hidden="true">◷</span>
+                </div>
+                <p class="metric-value">{{ stats.near_expiry_batches }}</p>
+                <p class="metric-caption">Within {{ stats.expiry_warning_days }} days</p>
+            </article>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <article class="metric-card" data-testid="metric-expired-batches">
+                <div class="metric-top">
+                    <span class="metric-label">Expired batches</span>
+                    <span class="metric-icon icon-red" aria-hidden="true">!</span>
+                </div>
+                <p class="metric-value">{{ stats.expired_batches }}</p>
+                <p class="metric-caption">Remaining quantity above zero</p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<section class="secondary-grid">
+    <article class="content-card sales-card">
+        <div class="section-heading">
+            <div>
+                <h2>Today's sales</h2>
+                <p>Based on recorded sale transactions.</p>
+            </div>
+            <span class="card-symbol" aria-hidden="true">↗</span>
+        </div>
+        <div class="sales-total" data-testid="metric-sales-today">{{ stats.sales_today_revenue|idr }}</div>
+        <div class="sales-footnote">
+            <span class="sales-count">{{ stats.sales_today_count }}</span>
+            <span>completed sale transactions today</span>
+        </div>
+        <div class="sales-note">Revenue is not the same as profit. Cost of goods sold is not yet shown in this foundation dashboard.</div>
+    </article>
+
+    <article class="content-card movement-card">
+        <div class="section-heading">
+            <div>
+                <h2>Recent stock movements</h2>
+                <p>Latest recorded changes to batch quantities.</p>
+            </div>
+            <span class="section-meta">Latest 8</span>
+        </div>
+
+        {% if recent_movements %}
+        <div class="movement-list">
+            {% for movement in recent_movements %}
+            <div class="movement-row">
+                <span class="movement-mark {% if movement.quantity_delta > 0 %}movement-in{% else %}movement-out{% endif %}" aria-hidden="true">
+                    {% if movement.quantity_delta > 0 %}+{% else %}−{% endif %}
+                </span>
+                <div class="movement-detail">
+                    <strong>{{ movement.product_name }}</strong>
+                    <span>{{ movement.operation_label }} · {{ movement.occurred_at_utc }}</span>
+                </div>
+                <strong class="movement-quantity {% if movement.quantity_delta > 0 %}quantity-positive{% else %}quantity-negative{% endif %}">
+                    {{ movement.quantity_display }}
+                </strong>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state" data-testid="empty-movements">
+            <span class="empty-state-icon" aria-hidden="true">↔</span>
+            <strong>No stock movements yet</strong>
+            <p>Stock receipts, sales, and adjustments will appear here once those workflows are available and transactions have been recorded.</p>
+        </div>
+        {% endif %}
+    </article>
+</section>
+
+<section class="next-step-card">
+    <div class="next-step-icon" aria-hidden="true">→</div>
+    <div>
+        <p class="eyebrow">NEXT MILESTONE</p>
+        <h2>Product management comes next</h2>
+        <p>This phase establishes the Flask application, database connection, and dashboard shell. The next milestone will add product creation, validation, search, editing, and archiving.</p>
+    </div>
+    <a class="text-link" href="https://github.com/krisvan123/CS50X_FinalProject/blob/main/docs/REQUIREMENTS_AND_USER_FLOWS.md" target="_blank" rel="noopener noreferrer">View requirements <span aria-hidden="true">↗</span></a>
+</section>
+{% endblock %}
