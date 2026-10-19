@@ -69,7 +69,7 @@ The initializer does not add synthetic data. Create a product through the interf
 python -m unittest discover -s tests -v
 ```
 
-The integrated automated suite currently has 58 passing tests on Python 3.12 in [GitHub Actions run 39213601559](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39213601559). Tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, idempotent receipt/sale/disposal resubmission, and historical-balance consistency. Automated tests are not a substitute for browser-based visual review, true concurrent-request testing, or a final manual security review.
+The integrated automated suite currently has 62 passing tests on Python 3.12 in [GitHub Actions run 39215925741](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39215925741). Tests cover core form validation, FEFO allocation, expiry restrictions, reports/CSV, disposal and count corrections, warning settings, replay protection, historical-balance consistency, HTTP security headers, and concurrent stock requests. Automated tests do not replace visual browser review or deployment-specific security testing.
 
 ## Main routes
 

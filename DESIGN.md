@@ -59,7 +59,7 @@ Recorded disposal value is calculated as absolute disposal quantity multiplied b
 
 ### Duplicate-submission protection
 
-A high-entropy request token is created when a stock-changing form is rendered, sent as a hidden field, and stored under a unique database constraint on the operation. Reposting that same rendered form token is recognized as an operation already processed and must not create a second receipt, sale, or stock action. This server-side protection complements rather than replaces CSRF validation.
+A high-entropy request token is created when a stock-changing form is rendered, sent as a hidden field, and stored under a unique database constraint on the operation. The receipt, sale, and stock-action routes acquire a SQLite `BEGIN IMMEDIATE` write reservation before checking the token or reading mutable stock balances. This serializes competing writers so they validate against the latest committed quantity; the unique token constraint remains the final replay safeguard. This server-side protection complements rather than replaces CSRF validation.
 
 ## 5. Reporting and restock rules
 
@@ -75,12 +75,12 @@ This is transparent decision support, not a guarantee or purchase order. The cal
 
 ## 6. Security and failure handling
 
-State-changing forms use a session-bound CSRF token. Receipts, sales, and stock actions also use operation-specific request tokens for duplicate protection. SQL uses parameter binding for user values; validation occurs on the server regardless of browser-side constraints. Jinja autoescaping applies to template values. CSV exports guard formula-leading text, use a UTF-8 BOM, set attachment headers, and are marked no-store.
+State-changing forms use a session-bound CSRF token. Responses include conservative browser security headers (CSP, frame denial, MIME sniffing protection, Referrer-Policy, and a restrictive Permissions-Policy). Dynamic pages use `Cache-Control: no-store`; static assets can still be cached. Receipts, sales, and stock actions also use operation-specific request tokens for duplicate protection. SQL uses parameter binding for user values; validation occurs on the server regardless of browser-side constraints. Jinja autoescaping applies to template values. CSV exports guard formula-leading text, use a UTF-8 BOM, set attachment headers, and are marked no-store.
 
 The request body size is limited, and session cookies are configured HttpOnly and SameSite=Lax. The app reads a stable secret from `WARUNGWISE_SECRET_KEY` when set; otherwise it generates a random local-process secret. The latter is suitable for local development but can invalidate sessions after a restart. Authentication, authorization, HTTPS, production server configuration, stable deployed secret management, and public deployment are not claimed for this release.
 
 ## 7. Verification and limitations
 
-The integrated automated suite contains 58 tests and passed on Python 3.12 in [GitHub Actions run 39213601559](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39213601559). Tests cover form validation, FEFO, expired stock, reports/CSV, disposal/count corrections, settings, duplicate request-token submissions, and a historical-balance scenario.
+The integrated automated suite contains 62 tests and passed on Python 3.12 in [GitHub Actions run 39215925741](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39215925741). Tests cover form validation, FEFO, expired stock, reports/CSV, disposal/count corrections, settings, duplicate request-token submissions, historical-balance scenarios, HTTP security headers, and concurrent receipt/sale/disposal requests.
 
 This CI result does not replace the Phase 12 manual browser and security gate. That phase must still cover real concurrent duplicate POSTs, broader temporal-ledger cases, keyboard/mobile/reduced-motion review, error paths, and the local setup flow. The README's Video Demo URL remains pending until the project video is recorded.
