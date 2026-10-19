@@ -1,8 +1,8 @@
 # Pre-Phase 12 Quality Review
 
 **Review date:** October 19, 2026  
-**Reviewed commit:** `78b8a160d05ca971c4e56a10c5670bf83d34b739`  
-**Automated verification:** [GitHub Actions run 39216329904](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216329904) — 63 tests passed on Python 3.12.  
+**Reviewed commit:** `de09bd5a683c4e590417d1d59d0a249fc4d7ec47`  
+**Automated verification:** [GitHub Actions run 39216671672](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216671672) — 64 tests passed on Python 3.12.  
 **Status:** Core pre-Phase 12 improvements are implemented. This document does not claim that the full security or browser review is complete.
 
 ## Improvements completed before Phase 12
@@ -24,7 +24,7 @@
 - Server-side validation and CSRF checks cover state-changing workflows.
 - Sales, receipts, and stock actions use transactions with rollback on database failure.
 - Reports distinguish gross revenue from profit and recorded disposal cost from estimated loss.
-- The latest code CI run completed all 63 automated tests successfully, including duplicate stock-action submission, a historical-balance case, security headers, concurrent receipt/sale/disposal requests, and CSRF rejection for newly added stock/settings routes.
+- The latest code CI run completed all 64 automated tests successfully, including duplicate stock-action submission, a historical-balance case, security headers, concurrent receipt/sale/disposal requests, and CSRF rejection for product edit/archive, stock actions, and settings routes.
 
 ## Explicit remaining work for Phase 12
 
@@ -44,4 +44,4 @@
 
 ## Assessment boundary
 
-The 63-test CI result is evidence that the currently automated scenarios pass. It is not a 10/10 guarantee, an official CS50 grade, a penetration-test result, or evidence of real-world shop validation. Those claims require separate evidence.
+The 64-test CI result is evidence that the currently automated scenarios pass. It is not a 10/10 guarantee, an official CS50 grade, a penetration-test result, or evidence of real-world shop validation. Those claims require separate evidence.
