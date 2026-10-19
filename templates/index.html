@@ -21,7 +21,7 @@
     <div class="welcome-icon" aria-hidden="true">✓</div>
     <div>
         <strong>Your local database is connected</strong>
-        <p>Dashboard figures are calculated from saved records. Product Management is now available; stock intake and sales will follow in later milestones.</p>
+        <p>Dashboard figures are calculated from saved records. Product management and batch-based stock receipts are available; sales and stock adjustments are planned for a later milestone.</p>
     </div>
     <span class="status-pill"><span aria-hidden="true"></span> Database ready</span>
 </section>
@@ -126,7 +126,7 @@
         <div class="empty-state" data-testid="empty-movements">
             <span class="empty-state-icon" aria-hidden="true">↔</span>
             <strong>No stock movements yet</strong>
-            <p>Stock receipts, sales, and adjustments will appear here once those workflows are available and transactions have been recorded.</p>
+            <p>Stock receipts now appear here as soon as a batch is recorded. Sales and adjustments will appear when those workflows are added.</p>
         </div>
         {% endif %}
     </article>
@@ -136,9 +136,9 @@
     <div class="next-step-icon" aria-hidden="true">→</div>
     <div>
         <p class="eyebrow">NEXT MILESTONE</p>
-        <h2>Keep your product catalogue up to date</h2>
-        <p>Create and maintain product records, set stock thresholds, and configure expiry tracking before using the upcoming stock workflows.</p>
+        <h2>Record your next stock delivery</h2>
+        <p>Receive every delivery as a separate batch so expiry dates, remaining quantities, and stock history stay traceable.</p>
     </div>
-    <a class="text-link" href="{{ url_for('products') }}">Open product management <span aria-hidden="true">→</span></a>
+    <a class="text-link" href="{{ url_for('new_batch') }}">Receive stock <span aria-hidden="true">→</span></a>
 </section>
 {% endblock %}
