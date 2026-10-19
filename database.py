@@ -27,9 +27,14 @@ def get_db() -> sqlite3.Connection:
             str(database_path),
             timeout=5.0,
         )
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
-        connection.execute("PRAGMA busy_timeout = 5000")
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            connection.execute("PRAGMA busy_timeout = 5000")
+        except Exception:
+            connection.close()
+            raise
+
         g.db = connection
 
     return g.db
