@@ -108,6 +108,21 @@ The automated test suite runs on Python 3.12 through [GitHub Actions](https://gi
 | `/settings` | Expiry-warning setting |
 | `/health` | Local readiness check |
 
+## Optional public demo deployment
+
+A read-only preview can be deployed to Render using the repository's `render.yaml` Blueprint. The configuration installs the production WSGI server, creates a fictional sample database when the service starts, supplies a generated session secret, and blocks every non-read-only HTTP method in public demo mode.
+
+To deploy:
+
+1. Sign in to Render and choose **New + → Blueprint**.
+2. Connect the GitHub repository `krisvan123/CS50X_FinalProject` and follow the Blueprint creation prompts.
+3. Confirm that the service uses the Free plan, then create the resources and wait for the first deploy.
+4. Open the assigned `onrender.com` URL and check the dashboard, products, batches, reports, and CSV downloads.
+
+This hosted version is a **public read-only portfolio preview**, not a production inventory system. It contains only synthetic data and rejects changes to business records. The free Render filesystem is ephemeral: the service sleeps after inactivity, and its local SQLite file may be lost when it sleeps, restarts, or redeploys. The startup command seeds the demo database again when necessary. Free services may take about a minute to wake up. See the [Render Flask deployment guide](https://render.com/docs/deploy-flask) and [free service limitations](https://render.com/docs/free).
+
+Use the local demo database for the video walkthrough when you need to demonstrate changing stock or recording sales. Do not enter real shop records, credentials, or personal information into the public demo. This configuration is for a portfolio preview only and does not add authentication or make the application suitable for real public business use.
+
 ## Scope and limitations
 
 WarungWise is designed for one local shop and one operator. It does not include user accounts, roles, multi-shop access, cloud sync, supplier purchasing orders, payment processing, refunds, or machine-learning-based forecasting. Restock suggestions cannot account for unrecorded sales, promotions, seasonality, supplier minimums, or cash constraints.

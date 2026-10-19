@@ -2868,3 +2868,41 @@ code.ww-identifier {
         overflow: visible;
     }
 }
+
+/* Public portfolio deployment — explicitly label the read-only sample instance. */
+.demo-readonly-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 22px;
+    padding: 14px 17px;
+    border: 1px solid #ead7af;
+    border-radius: 13px;
+    background: #fff9ec;
+    color: #79541b;
+}
+.demo-readonly-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    margin-top: 6px;
+    border-radius: 50%;
+    background: #c58a28;
+    box-shadow: 0 0 0 4px rgba(197, 138, 40, .12);
+}
+.demo-readonly-banner div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+.demo-readonly-banner strong {
+    color: #744c13;
+    font-size: 11px;
+    font-weight: 800;
+}
+.demo-readonly-banner span:not(.demo-readonly-dot) {
+    color: #8b6b36;
+    font-size: 11px;
+    line-height: 1.6;
+}

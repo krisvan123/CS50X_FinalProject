@@ -533,6 +533,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         # be supplied through WARUNGWISE_SECRET_KEY when the application needs it.
         SECRET_KEY=os.environ.get("WARUNGWISE_SECRET_KEY") or os.urandom(32),
         DATABASE=os.environ.get("WARUNGWISE_DATABASE") or str(Path(app.instance_path) / "warungwise.db"),
+        DEMO_READ_ONLY=os.environ.get("WARUNGWISE_DEMO_READ_ONLY", "").strip().lower() in {"1", "true", "yes"},
         MAX_CONTENT_LENGTH=1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
@@ -566,6 +567,24 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         if request.endpoint != "static":
             response.headers.setdefault("Cache-Control", "no-store")
         return response
+
+    @app.before_request
+    def enforce_public_demo_read_only() -> Response | tuple[str, int] | None:
+        """Prevent visitors from changing records in the public sample deployment."""
+        if (
+            current_app.config.get("DEMO_READ_ONLY", False)
+            and request.method not in {"GET", "HEAD", "OPTIONS"}
+        ):
+            return render_template(
+                "error.html",
+                title="Public demo is read-only",
+                error_code=403,
+                message=(
+                    "This public preview uses fictional sample data and does not accept "
+                    "changes. Run the demo locally to try inventory workflows."
+                ),
+            ), 403
+        return None
 
     @app.template_filter("idr")
     def format_idr(value: Any) -> str:

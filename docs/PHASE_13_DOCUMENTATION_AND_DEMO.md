@@ -52,7 +52,17 @@ A concise walk-through can use this order:
 
 Only perform additional writes against the separate demo database during rehearsal. Do not use invented values to imply real customer transactions, real business performance, or validated forecasts.
 
-## 4. Phase 13 exit checklist
+## 4. Optional Render portfolio preview
+
+The repository includes a `render.yaml` Blueprint for a free Render web service. The public instance uses `wsgi.py`, Gunicorn, `WARUNGWISE_DATABASE=instance/warungwise-demo.db`, `WARUNGWISE_DEMO_READ_ONLY=true`, and a generated `WARUNGWISE_SECRET_KEY`.
+
+The global request guard rejects all non-read-only HTTP methods when public demo mode is enabled. The shared layout labels the instance as a read-only public demo. The startup command runs `python seed_demo.py` before launching Gunicorn, so a fresh ephemeral filesystem receives the fictional sample records.
+
+**Important limitations:** Render's free filesystem is ephemeral and can be cleared when the service sleeps, restarts, or redeploys. The public site is designed for browsing and portfolio evaluation only; perform write-workflow demonstrations locally. Do not store real inventory, personal information, or secrets in the public demo.
+
+Deployment still requires the project owner to sign in to Render, connect the GitHub repository, and create the Blueprint. The repository cannot create that account-level service on the owner's behalf.
+
+## 5. Phase 13 exit checklist
 
 - [ ] Complete and record the Phase 12 manual browser/security review.
 - [ ] Verify all demo routes at desktop and narrow/mobile widths.

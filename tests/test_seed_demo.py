@@ -106,6 +106,73 @@ class WarungWiseDemoSeedTests(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_read_only_public_demo_displays_a_clear_banner(self) -> None:
+        seed_demo_database(self.database_path)
+        app = create_app({
+            "TESTING": True,
+            "SECRET_KEY": "demo-readonly-test-only",
+            "DATABASE": str(self.database_path),
+            "DEMO_READ_ONLY": True,
+        })
+        response = app.test_client().get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Public demo", response.data)
+        self.assertIn(b"Read-only", response.data)
+        self.assertIn(b"fictional sample records", response.data)
+
+    def test_read_only_public_demo_rejects_writes_without_changing_data(self) -> None:
+        seed_demo_database(self.database_path)
+        app = create_app({
+            "TESTING": True,
+            "SECRET_KEY": "demo-readonly-test-only",
+            "DATABASE": str(self.database_path),
+            "DEMO_READ_ONLY": True,
+        })
+        client = app.test_client()
+
+        settings_response = client.post(
+            "/settings", data={"expiry_warning_days": "7"}
+        )
+        product_response = client.post(
+            "/products/new",
+            data={
+                "name": "Injected Public Product",
+                "sku": "PUBLIC-INJECTED-001",
+                "category": "Test",
+                "unit": "pack",
+                "cost_price": "1000",
+                "selling_price": "1500",
+                "minimum_stock": "2",
+                "lead_time_days": "2",
+                "safety_stock": "1",
+                "tracks_expiry": "0",
+            },
+        )
+        self.assertEqual(settings_response.status_code, 403)
+        self.assertEqual(product_response.status_code, 403)
+
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(
+                connection.execute(
+                    "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+                ).fetchone()[0],
+                30,
+            )
+            self.assertEqual(
+                connection.execute("SELECT COUNT(*) FROM products").fetchone()[0],
+                len(DEMO_PRODUCTS),
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM products WHERE sku = 'PUBLIC-INJECTED-001'"
+                ).fetchone()[0],
+                0,
+            )
+        finally:
+            connection.close()
+
     def test_primary_pages_render_with_seeded_demo_database(self) -> None:
         seed_demo_database(self.database_path)
         app = create_app({

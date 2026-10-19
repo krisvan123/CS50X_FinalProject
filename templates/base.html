@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='11') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='12') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -76,8 +76,8 @@
         <div class="workspace-card">
             <span class="workspace-indicator" aria-hidden="true"></span>
             <div>
-                <strong>Local workspace</strong>
-                <small>Single-shop edition</small>
+                <strong>{% if config.get('DEMO_READ_ONLY', False) %}Demo workspace{% else %}Local workspace{% endif %}</strong>
+                <small>{% if config.get('DEMO_READ_ONLY', False) %}Read-only sample data{% else %}Single-shop edition{% endif %}</small>
             </div>
         </div>
         <div class="sidebar-footnote">WarungWise · CS50x Final Project</div>
@@ -91,11 +91,20 @@
             </div>
             <div class="topbar-meta">
                 <span class="local-status-dot" aria-hidden="true"></span>
-                <span>Local environment</span>
+                <span>{% if config.get('DEMO_READ_ONLY', False) %}Public demo · read-only{% else %}Local environment{% endif %}</span>
             </div>
         </header>
 
         <main id="main-content" class="main-content">
+            {% if config.get('DEMO_READ_ONLY', False) %}
+            <div class="demo-readonly-banner" role="status">
+                <span class="demo-readonly-dot" aria-hidden="true"></span>
+                <div>
+                    <strong>Public demo · Read-only</strong>
+                    <span>Explore the fictional sample records. To test stock changes, run WarungWise locally.</span>
+                </div>
+            </div>
+            {% endif %}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                 <div class="flash-stack" aria-live="polite" aria-atomic="true">

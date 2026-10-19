@@ -79,7 +79,13 @@ State-changing forms use a session-bound CSRF token. Responses include conservat
 
 The request body size is limited, and session cookies are configured HttpOnly and SameSite=Lax. The app reads a stable secret from `WARUNGWISE_SECRET_KEY` when set; otherwise it generates a random local-process secret. The latter is suitable for local development but can invalidate sessions after a restart. Authentication, authorization, HTTPS, production server configuration, stable deployed secret management, and public deployment are not claimed for this release.
 
-## 7. Verification and limitations
+## 7. Optional public demo deployment
+
+The repository includes a Render Blueprint and a WSGI entry point using Gunicorn. The hosted preview points to the dedicated `instance/warungwise-demo.db` path, is seeded at service startup, and enables `DEMO_READ_ONLY`. A Flask `before_request` guard rejects every method other than GET, HEAD, and OPTIONS in this mode. The base template displays a visible read-only banner. Normal local development remains writable unless the demo-only environment flag is explicitly enabled.
+
+Render's free filesystem is ephemeral and may be cleared when its service sleeps, restarts, or redeploys. The public instance therefore contains only fictional data, reseeds on startup when its database is empty, and is for portfolio browsing rather than real shop use. The public preview still does not implement authentication or authorization for real business accounts; its guard is a read-only demonstration mode, not a substitute for a production security design.
+
+## 8. Verification and limitations
 
 The integrated automated suite contains 64 tests and passed on Python 3.12 in [GitHub Actions run 39216671672](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39216671672). Tests cover form validation, FEFO, expired stock, reports/CSV, disposal/count corrections, settings and CSRF rejection for state-changing routes, duplicate request-token submissions, historical-balance scenarios, HTTP security headers, and concurrent receipt/sale/disposal requests.
 
