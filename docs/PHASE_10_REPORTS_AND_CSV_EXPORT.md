@@ -1,6 +1,6 @@
 # Phase 10 — Reports and CSV Export
 
-**Status:** Implementation committed; the latest automated test run is pending.  
+**Status:** Implemented and verified by [GitHub Actions on Python 3.12](https://github.com/krisvan123/CS50X_FinalProject/actions/runs/39209977111) — all 49 automated tests passed on October 19, 2026.  
 **Scope:** Date-filtered sales analytics, daily revenue visualisation, top-product analysis, a current batch snapshot, and CSV downloads.
 
 ## Reports page
@@ -40,7 +40,7 @@ Run the complete suite:
 python -m unittest discover -s tests -v
 ```
 
-Tests cover empty reports, date-filtered revenue and daily trend, selected-period CSV exports, the movement ledger, formula-like product names/SKUs, invalid date ranges, and unsupported export types. Confirm the latest GitHub Actions run before treating this phase as verified.
+Tests cover empty reports, date-filtered revenue and daily trend, selected-period CSV exports, the movement ledger, formula-like product names/SKUs, invalid date ranges, and unsupported export types. Verification result: the GitHub Actions run linked above completed successfully and reported 49 tests passing. Re-run the suite after future code changes.
 
 ## AI assistance note
 
