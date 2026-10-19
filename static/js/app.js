@@ -10,6 +10,12 @@
         ".recommendation-summary-card",
         ".recommendation-formula-card",
         ".recommendation-table-card",
+        ".report-summary-card",
+        ".report-chart-card",
+        ".report-export-card",
+        ".report-table-card",
+        ".report-stock-card",
+        ".report-filter-card",
         ".section-block",
         ".metric-card",
         ".dashboard-alert-grid > .content-card",
@@ -51,7 +57,7 @@
 
     if (!prefersReducedMotion) {
         const numberFormat = new Intl.NumberFormat("id-ID");
-        document.querySelectorAll(".metric-value, .recommendation-summary-card [data-testid]").forEach(function (node) {
+        document.querySelectorAll(".metric-value, .recommendation-summary-card [data-testid], .report-summary-count").forEach(function (node) {
             const target = Number((node.textContent || "").trim().replace(/[^0-9-]/g, ""));
             if (!Number.isFinite(target) || target <= 0 || node.dataset.countAnimated === "true") {
                 return;
