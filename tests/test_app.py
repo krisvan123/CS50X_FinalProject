@@ -778,5 +778,36 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertNotIn(b"Laundry Soap", response.data)
 
 
+    def test_dashboard_shows_low_stock_and_expiry_watchlists(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(
+            name="Expiry Yoghurt",
+            tracks_expiry="1",
+            minimum_stock="2",
+        )
+        expiry_date = (date.today() + timedelta(days=2)).isoformat()
+        self._post_with_csrf(
+            "/batches/new",
+            "/batches/new",
+            self._batch_form_values(
+                product_id,
+                expiry_date=expiry_date,
+                quantity_received="1",
+            ),
+            follow_redirects=True,
+        )
+
+        response = self.client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Low-stock watchlist", response.data)
+        self.assertIn(b"Expiry watchlist", response.data)
+        self.assertIn(b"Expiry Yoghurt", response.data)
+        self.assertIn(b"2 days left", response.data)
+        self.assertIn(b"1", response.data)
+
+
 if __name__ == "__main__":
     unittest.main()
