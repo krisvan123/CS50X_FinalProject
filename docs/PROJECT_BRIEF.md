@@ -2,8 +2,8 @@
 
 **Project title:** WarungWise  
 **Tagline:** *Smarter Stock. Less Waste. Better Decisions.*  
-**Document status:** Phase 1 — planning  
-**Implementation status:** Not yet implemented or tested
+**Document status:** Living project brief, updated after implementation  
+**Implementation status:** Core workflows and reports are implemented. GitHub Actions currently reports 57 passing automated tests; manual browser, security, and submission checks remain.
 
 ## 1. Executive Summary
 

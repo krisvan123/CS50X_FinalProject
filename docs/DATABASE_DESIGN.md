@@ -1,7 +1,7 @@
 # WarungWise — Database Design
 
 **Phase:** 3 — Database Design  
-**Status:** Initial schema drafted and checked in an isolated SQLite database; application integration has not started  
+**Status:** Implemented in `schema.sql` and integrated with Flask routes; schema changes currently use reviewed source updates rather than a migration framework  
 **Related documents:** [Project Brief and Scope](PROJECT_BRIEF.md) · [Requirements and User Flows](REQUIREMENTS_AND_USER_FLOWS.md)  
 **Schema:** [schema.sql](../schema.sql)
 
@@ -75,7 +75,7 @@ Each receipt creates a new batch. Its product identity, receipt date, expiry dat
 
 **sales** contains an integer primary key and a unique reference to its sale operation. Its timestamp and business date come from that operation, avoiding duplicated values.
 
-**sale_items** contains an integer primary key, sale ID, product ID, positive whole quantity, and positive selling-price snapshot in IDR. A product may appear only once per sale; the application combines repeated selections before saving. Historical sales and sale items are append-only in this version.
+**sale_items** contains an integer primary key, sale ID, product ID, positive whole quantity, and positive selling-price snapshot in IDR. The schema can represent multiple product lines, but the current application interface intentionally records one product per sale; one line can allocate quantity across multiple batches. Historical sales and sale items are append-only in this version.
 
 ### stock_movements
 
@@ -190,7 +190,7 @@ Before commit, the schema was executed in an isolated in-memory SQLite database.
 - A duplicate case-insensitive SKU was rejected.
 - Re-executing the schema did not require deleting the test database.
 
-These are preliminary checks of the schema in isolation, not full application tests. The Flask application, user interface, and end-to-end workflows have not yet been implemented.
+These bullets describe the original schema-only checks performed during Phase 3, not a claim that schema checks replace application testing. The current Flask application has a separate automated suite; browser-level, concurrency, and full manual end-to-end verification remain part of the quality review.
 
 ## 11. Definition of Done for Phase 3
 

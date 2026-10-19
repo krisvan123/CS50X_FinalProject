@@ -1,7 +1,7 @@
 # WarungWise — Requirements and User Flows
 
 **Phase:** 2 — Requirements and User Flows  
-**Status:** Design specification; implementation has not started  
+**Status:** Living specification. Keep scope and acceptance criteria aligned with actual application behavior.  
 **Related document:** [Project Brief and Scope](PROJECT_BRIEF.md)
 
 ## 1. Purpose
@@ -64,13 +64,13 @@ The initial application is a local, single-shop, single-user web application. It
 
 ### 4.3 Sales
 
-- **FR-SALE-01:** The operator can record one sale containing one or more product lines, each with a product and a positive whole-number quantity.
+- **FR-SALE-01:** The operator can record one sale for one product and a positive whole-number quantity. Multi-item checkout is intentionally deferred; the quantity sold may still be allocated across multiple stock batches.
 - **FR-SALE-02:** Only active products and eligible, sellable batch quantities may satisfy a sale.
 - **FR-SALE-03:** For expiry-tracked products, stock is allocated using First Expired, First Out (FEFO): the earliest non-expired batch is consumed first, with receipt date used to break ties.
 - **FR-SALE-04:** Each sale line stores the unit selling price used at the time of sale so later product price changes do not rewrite historical revenue.
-- **FR-SALE-05:** The application rejects a sale if any line has invalid input or insufficient sellable stock. No part of the sale may be committed.
-- **FR-SALE-06:** A successful sale records its timestamp, line items, quantity, sale-price snapshot, and associated stock movements. A sale may consume multiple batches if an earlier eligible batch does not contain enough stock.
-- **FR-SALE-07:** Repeated submission of the same completed inventory operation must not create a second stock change. A server-side duplicate-submission safeguard is required; disabling a browser button alone is insufficient.
+- **FR-SALE-05:** The application rejects a sale if input is invalid or sellable stock is insufficient. No stock movement may be committed for a rejected sale.
+- **FR-SALE-06:** A successful sale records its timestamp, the single product line, quantity, sale-price snapshot, and associated stock movements. A sale may consume multiple batches if an earlier eligible batch does not contain enough stock.
+- **FR-SALE-07:** Each stock-changing form includes a high-entropy request token generated when the form is rendered. Re-submitting the same token is treated as an already-processed operation and must not create a second stock change.
 - **FR-SALE-08:** Sales returns and refunds are out of scope for the initial release and must not be simulated as ordinary sales or unexplained stock adjustments.
 
 ### 4.4 Stock Adjustments and Disposal
@@ -88,7 +88,7 @@ The initial application is a local, single-shop, single-user web application. It
 - **FR-ALERT-01:** The application distinguishes low-stock products, batches nearing expiry, and expired batches with remaining quantity.
 - **FR-ALERT-02:** Sellable quantity is calculated from eligible batches and excludes expired or disposed stock.
 - **FR-ALERT-03:** A product is low-stock when its sellable quantity is less than or equal to its configured minimum-stock threshold.
-- **FR-ALERT-04:** The default expiry-warning window is 30 days and must be configurable through a simple application setting. Storage of this setting will be finalized during Phase 3.
+- **FR-ALERT-04:** The default expiry-warning window is 30 days and is configurable from 0 to 365 days on the Workspace settings page.
 - **FR-ALERT-05:** An approaching-expiry alert applies when an expiry-tracked batch has a remaining quantity greater than zero and its expiry date falls within the configured warning window, including the current date.
 - **FR-ALERT-06:** An expired alert applies when a batch has a remaining quantity greater than zero and its expiry date is earlier than the current date.
 - **FR-ALERT-07:** Status must be conveyed with text as well as visual styling; color alone is insufficient.
@@ -181,16 +181,16 @@ Numeric values must be parsed and validated before database writes. Database acc
 
 **Goal:** Record a sale without overselling or losing traceability.
 
-1. The operator opens Record Sale and adds one or more product lines.
-2. For each line, the operator chooses an active product and enters a positive whole quantity.
-3. The server checks every line against available sellable stock.
-4. For expiry-tracked products, stock is allocated from eligible batches using FEFO.
-5. If every line passes validation, the application atomically saves the sale, sale lines, and batch-level movements. Sale prices are saved as historical snapshots.
-6. The operator sees the sale summary, calculated revenue, and updated inventory.
+1. The operator opens Record Sale, chooses one active product, and enters a positive whole quantity.
+2. The server checks the product, requested business date, and the batch ledger.
+3. For expiry-tracked products, stock is allocated from eligible batches using FEFO.
+4. For a backdated sale, the application verifies the safe quantity on that date and after every subsequent batch movement; a sale that would create a negative historical batch balance is rejected.
+5. If validation succeeds, the application atomically saves the sale, captured unit price, and batch-level movements.
+6. The operator sees the sale summary, calculated gross revenue, and updated inventory.
 
-**Expected result:** Sale lines are recorded, eligible batch quantities are reduced, and movement history agrees with the resulting stock.  
-**Failure cases:** Insufficient sellable stock, archived product, invalid quantity, expired-only stock, duplicate submission, or database failure.  
-**Integrity rule:** If any sale line fails, the entire sale is rejected and no line changes stock. A retry of a completed request must not create a duplicate sale.
+**Expected result:** The sale is recorded, eligible batch quantities are reduced, and the batch audit view agrees with the movement history.  
+**Failure cases:** Insufficient sellable stock, archived product, invalid quantity/date, expired-only stock, duplicate submission, or database failure.  
+**Integrity rule:** A failed sale must not change inventory. Re-submitting the same request token must not create a duplicate sale. Multi-item checkout is a documented scope exclusion for this release.
 
 ### Flow E — Review Stock and Expiry Status
 
@@ -207,13 +207,16 @@ Numeric values must be parsed and validated before database writes. Database acc
 
 ### Flow F — Dispose of Damaged or Expired Stock
 
+**Implemented route:** `/stock-actions/new`.
+
 **Goal:** Remove unsellable inventory with a traceable reason.
 
-1. The operator selects a batch and opens Record Disposal/Adjustment.
-2. The operator selects a reason, enters a positive quantity to remove, and may enter a note.
-3. The server checks that the batch exists and that the quantity does not exceed its remaining amount.
-4. The application atomically reduces batch quantity and records the movement and applicable cost basis.
-5. The operator sees the updated batch, stock level, and recorded disposal value.
+1. The operator selects a batch and opens Waste & stock corrections.
+2. The operator chooses disposal, outbound count correction, or inbound count correction; enters a positive quantity and a required reason; and may add a note.
+3. The action is dated today (local machine date) to avoid silently rewriting a previously reported period.
+4. The server checks that the batch belongs to an active product, validates the quantity against the batch balance, and validates the reason.
+5. The application atomically writes the operation and movement; the database trigger updates the remaining quantity.
+6. Reports calculate recorded disposal value from the removed quantity and that batch's saved unit cost.
 
 **Expected result:** Remaining quantity decreases by exactly the entered amount, and the event appears in history.  
 **Failure cases:** Missing reason, zero or excessive quantity, invalid batch, or database failure.  
@@ -308,21 +311,21 @@ These scenarios define future test cases. They are test plans, not claims that t
 | AT-13 | A database operation fails during a stock-changing transaction | The operation is rolled back | Neither the stock change nor its associated record is partially committed |
 | AT-14 | There are no products or no matching report rows | The operator opens the relevant view | The UI shows a useful empty state rather than invented totals |
 | AT-15 | An existing batch has a documented stock-count discrepancy | The operator records a positive adjustment with a reason | The balance increases, the movement is traceable, and the batch audit difference remains zero |
+| AT-16 | A receipt or sale form is submitted twice with the same request token | The server receives the repeated request | One operation and one set of movements exist; inventory changes only once |
+| AT-17 | A later movement would make a backdated sale create a negative batch balance | The operator submits the backdated sale | The sale is rejected and no additional movement or sale line is saved |
+| AT-18 | A disposal or outbound correction exceeds the remaining batch balance | The operator submits the action | The action is rejected and the batch balance is unchanged |
+| AT-19 | The operator changes the expiry-warning window to a valid value | The operator saves Workspace settings | The new setting persists and is used by expiry watchlists and reports |
 
-## 9. Decisions to Resolve During Phase 3 — Database Design
+## 9. Implemented Design Decisions
 
-Phase 3 must translate these requirements into a consistent, traceable data model. It should explicitly evaluate:
+The implementation resolves the main data-model choices as follows:
 
-- Products and their inventory/restock settings.
-- Stock batches and batch-level remaining quantities, expiry dates, and cost basis.
-- Stock movements with type, quantity, timestamp, reason, and source reference.
-- Sale transaction headers and one or more sale lines, including historical selling-price snapshots.
-- A reliable way to link sales, receipts, disposal events, and batch-level movements.
-- Duplicate-submission protection for stock-changing operations.
-- Application settings such as the expiry-warning window.
-- Foreign-key rules, CHECK constraints, unique SKU behavior, indexes where justified, and transaction boundaries.
-
-The final schema is not assumed in this document. Each table and relationship must serve a documented requirement and be reviewed before implementation.
+- Product identity and restock settings are stored in `products`; batch receipts and unit costs are stored per receipt in `stock_batches`.
+- `stock_operations` groups an action and `stock_movements` stores signed batch-level changes. A trigger maintains the current balance and audit views compare it with the ledger.
+- Each sale created through the current interface contains one product line. FEFO may allocate that line across several batches. Multi-item checkout is intentionally deferred.
+- Stock-changing forms use unique request tokens to prevent repeated submission of the same rendered operation from applying stock changes twice.
+- Expiry-warning days are stored in `app_settings` and are configurable through `/settings`.
+- Database constraints and triggers enforce the core relationship and stock-direction rules; the application validates submitted values and wraps each stock-changing operation in a transaction.
 
 ## 10. Definition of Done for Phase 2
 
@@ -334,4 +337,4 @@ Phase 2 is documented when:
 - Acceptance scenarios can be converted into automated or manual tests.
 - Open database-design decisions are identified for Phase 3.
 
-No implementation or test results are claimed in this document.
+This is a living specification. The automated test suite currently includes coverage for many core scenarios; remaining security, concurrency, visual, and end-to-end checks are explicitly deferred to the Phase 12 quality gate.

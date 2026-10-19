@@ -7,7 +7,7 @@ Allow a shop worker to record a sale against current product pricing while reduc
 ## Features
 
 - Sales history with product search, captured unit prices, transaction dates, quantities, and gross totals.
-- Sale form with active products, business date, quantity, and optional note.
+- Sale form with active products, business date, quantity, and optional note. Each recorded transaction intentionally contains one product line; a single line can consume multiple eligible batches.
 - Live sale preview showing the selected product's current availability, selling price, and estimated gross total.
 - FEFO allocation across multiple batches when a sale quantity is larger than one batch.
 - Excludes expired batches and batches that had not yet been received on the chosen business date.
