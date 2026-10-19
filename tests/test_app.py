@@ -1159,7 +1159,7 @@ class WarungWiseAppTests(unittest.TestCase):
                 INSERT INTO stock_movements (
                     operation_id, product_id, batch_id, quantity_delta
                 ) VALUES (?, ?, ?, 5)
-                """, (adjustment_operation_id, product_id, batch_id, 5),
+                """, (adjustment_operation_id, product_id, batch_id),
             )
             connection.commit()
         finally:
@@ -1180,7 +1180,7 @@ class WarungWiseAppTests(unittest.TestCase):
         try:
             self.assertEqual(connection.execute(
                 "SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)
-            ).fetchone()[0], 2)
+            ).fetchone()[0], 7)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM sales").fetchone()[0], 1)
             self.assertEqual(connection.execute(
                 "SELECT difference FROM v_batch_balance_audit WHERE batch_id = ?", (batch_id,)
