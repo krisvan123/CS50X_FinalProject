@@ -916,5 +916,185 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertNotIn(b"data-testid=\"restock-product-count\">1", response.data)
 
 
+    def test_reports_explain_setup_and_render_empty_period(self) -> None:
+        self.assertEqual(self.client.get("/reports").status_code, 503)
+        initialize_database(database_path=self.database_path)
+
+        response = self.client.get("/reports")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Reports &amp; analytics", response.data)
+        self.assertIn(b"No sales in this reporting period", response.data)
+        self.assertIn(b"Sales transactions", response.data)
+        self.assertIn(b"Current inventory snapshot", response.data)
+
+    def test_reports_filter_sales_and_calculate_revenue_and_daily_trend(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Bottled Tea")
+        today = date.today()
+        first_sale = today - timedelta(days=14)
+        self._receive_batch_via_form(
+            product_id,
+            received_date=first_sale.isoformat(),
+            expiry_date="",
+            quantity="20",
+        )
+
+        for sale_date, quantity in (
+            (first_sale, "2"),
+            (today - timedelta(days=7), "4"),
+            (today, "1"),
+        ):
+            response = self._post_with_csrf(
+                "/sales/new",
+                "/sales/new",
+                self._sale_form_values(
+                    product_id,
+                    business_date=sale_date.isoformat(),
+                    quantity=quantity,
+                ),
+                follow_redirects=True,
+            )
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/reports",
+            query_string={
+                "start_date": first_sale.isoformat(),
+                "end_date": today.isoformat(),
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Rp 21.000", response.data)
+        self.assertIn(b"Bottled Tea", response.data)
+        self.assertIn(b"Gross revenue trend", response.data)
+        self.assertIn(b"3", response.data)
+        self.assertIn(b"13", response.data)
+
+    def test_sales_csv_contains_only_selected_business_dates(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Tea Bottle")
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+        self._receive_batch_via_form(
+            product_id,
+            received_date=yesterday.isoformat(),
+            expiry_date="",
+            quantity="10",
+        )
+        for sale_date in (yesterday, today):
+            response = self._post_with_csrf(
+                "/sales/new",
+                "/sales/new",
+                self._sale_form_values(product_id, business_date=sale_date.isoformat()),
+                follow_redirects=True,
+            )
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.get(
+            "/reports/export/sales",
+            query_string={"start_date": today.isoformat(), "end_date": today.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "text/csv")
+        self.assertIn("attachment; filename=\\"warungwise_sales_", response.headers["Content-Disposition"])
+        csv_text = response.get_data(as_text=True).lstrip("\\ufeff")
+        rows = list(__import__("csv").reader(csv_text.splitlines()))
+        self.assertEqual(len(rows), 2, "Only the header and today's transaction should be exported.")
+        self.assertIn("Gross Total (IDR)", rows[0])
+        self.assertEqual(rows[1][3], "Tea Bottle")
+        self.assertEqual(rows[1][1], today.isoformat())
+
+    def test_movement_csv_exports_receipt_and_sale_ledger_rows(self) -> None:
+        from datetime import date
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="Tea Bottle")
+        today = date.today()
+        self._receive_batch_via_form(
+            product_id,
+            received_date=today.isoformat(),
+            expiry_date="",
+            quantity="10",
+        )
+        self._post_with_csrf(
+            "/sales/new",
+            "/sales/new",
+            self._sale_form_values(product_id, business_date=today.isoformat(), quantity="2"),
+        )
+
+        response = self.client.get(
+            "/reports/export/movements",
+            query_string={"start_date": today.isoformat(), "end_date": today.isoformat()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        csv_text = response.get_data(as_text=True).lstrip("\\ufeff")
+        rows = list(__import__("csv").reader(csv_text.splitlines()))
+        self.assertEqual(len(rows), 3)
+        self.assertIn("Quantity Delta", rows[0])
+        self.assertEqual({row[3] for row in rows[1:]}, {"receipt", "sale"})
+
+    def test_inventory_csv_protects_formula_like_product_text(self) -> None:
+        from datetime import date
+
+        initialize_database(database_path=self.database_path)
+        product_id = self._create_product(name="=2+2", sku="=SKU-1")
+        self._receive_batch_via_form(
+            product_id,
+            received_date=date.today().isoformat(),
+            expiry_date="",
+            quantity="3",
+        )
+
+        response = self.client.get("/reports/export/inventory")
+
+        self.assertEqual(response.status_code, 200)
+        csv_text = response.get_data(as_text=True).lstrip("\\ufeff")
+        rows = list(__import__("csv").reader(csv_text.splitlines()))
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1][1], "'=2+2")
+        self.assertEqual(rows[1][2], "'=SKU-1")
+
+    def test_reports_reject_invalid_date_ranges_and_unknown_exports(self) -> None:
+        from datetime import date, timedelta
+
+        initialize_database(database_path=self.database_path)
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        reversed_period = self.client.get(
+            "/reports",
+            query_string={"start_date": today.isoformat(), "end_date": yesterday.isoformat()},
+        )
+        self.assertEqual(reversed_period.status_code, 400)
+
+        future_period = self.client.get(
+            "/reports",
+            query_string={
+                "start_date": today.isoformat(),
+                "end_date": (today + timedelta(days=1)).isoformat(),
+            },
+        )
+        self.assertEqual(future_period.status_code, 400)
+
+        long_period = self.client.get(
+            "/reports",
+            query_string={
+                "start_date": (today - timedelta(days=366)).isoformat(),
+                "end_date": today.isoformat(),
+            },
+        )
+        self.assertEqual(long_period.status_code, 400)
+
+        self.assertEqual(self.client.get("/reports/export/unknown").status_code, 404)
+
+
 if __name__ == "__main__":
     unittest.main()
