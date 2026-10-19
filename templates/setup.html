@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">FIRST-TIME SETUP</p>
+        <h1>Prepare your workspace</h1>
+        <p class="page-subtitle">The application is ready, but the local database has not been initialized yet.</p>
+    </div>
+</section>
+
+<section class="setup-panel" aria-labelledby="setup-title">
+    <div class="setup-icon" aria-hidden="true">DB</div>
+    <div class="setup-copy">
+        <p class="eyebrow">ONE-TIME LOCAL SETUP</p>
+        <h2 id="setup-title">Initialize the database</h2>
+        <p>From the project root, run the command below in your terminal. It creates a new local database and checks its integrity. It will not overwrite an existing database.</p>
+        <pre class="command-block"><code>python init_db.py</code></pre>
+        <p class="small-note">No demo products or transactions are inserted automatically. After initialization, refresh this page.</p>
+    </div>
+</section>
+
+<div class="info-strip">
+    <span class="info-mark" aria-hidden="true">i</span>
+    <p>Application data is stored locally in <code>instance/warungwise.db</code>. That database file is excluded from Git by the repository's <code>.gitignore</code>.</p>
+</div>
+{% endblock %}
