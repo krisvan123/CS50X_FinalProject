@@ -48,11 +48,11 @@ The application trims input and normalizes SKU values before storage. The produc
 ### stock_operations
 
 - **id:** integer primary key.
-- **operation_type:** receipt, sale, disposal, or adjustment_out.
+- **operation_type:** receipt, sale, disposal, adjustment_out, or adjustment_in.
 - **request_token:** unique required token for duplicate-submission protection.
 - **occurred_at_utc:** timestamp recorded in UTC.
 - **business_date:** required local business date in YYYY-MM-DD format.
-- **reason:** required for disposal and outbound adjustment; absent for receipt and sale.
+- **reason:** required for disposal and either adjustment direction; absent for receipt and sale.
 - **note:** optional explanatory text.
 
 An operation header groups all movement rows caused by one user action. This allows a single sale that consumes multiple batches to remain one idempotent operation. The local business date is stored separately from the UTC timestamp so expiry decisions do not depend on the database server's UTC calendar date.
@@ -69,7 +69,7 @@ An operation header groups all movement rows caused by one user action. This all
 - **unit_cost:** actual unit cost for the batch in IDR; non-negative integer.
 - **created_at_utc:** UTC creation timestamp.
 
-Each receipt creates a new batch. Its product identity, receipt date, expiry date, original quantity, and actual unit cost are immutable. Its balance starts at zero and becomes available through the positive receipt movement. The database keeps the balance between zero and the original received quantity.
+Each receipt creates a new batch. Its product identity, receipt date, expiry date, original quantity, and actual unit cost are immutable. Its balance starts at zero and becomes available through the positive receipt movement. The database keeps the balance non-negative. The original received quantity remains a historical reference; a documented positive correction can make the current balance exceed the original receipt quantity, and that difference remains visible in the movement ledger.
 
 ### sales and sale_items
 
@@ -81,7 +81,7 @@ Each receipt creates a new batch. Its product identity, receipt date, expiry dat
 
 Each row contains an integer primary key, operation ID, product ID, batch ID, optional sale-item ID, and non-zero signed quantity delta. Composite foreign keys require a movement's product to match its batch and, for sales, the referenced sale item. A unique operation-and-batch pair prevents duplicate movements for the same batch within one operation.
 
-The movement type is read from the linked operation header rather than duplicated on every movement row. Receipt quantities are positive; sale, disposal, and outbound-adjustment quantities are negative. Movements and operation headers are immutable so history cannot be silently rewritten.
+The movement type is read from the linked operation header rather than duplicated on every movement row. Receipt and documented inbound-adjustment quantities are positive; sale, disposal, and outbound-adjustment quantities are negative. An inbound adjustment is only for correcting a count on an existing batch and requires a reason; a new delivery must use the receipt workflow. Movements and operation headers are immutable so history cannot be silently rewritten.
 
 ### app_settings
 
@@ -170,12 +170,13 @@ This is an initial schema, not a migration system. IF NOT EXISTS does not update
 
 If a completed request token is submitted again, the application must not replay its stock changes. It should identify the existing operation and return the existing result or an understandable duplicate-submission message.
 
-### Disposal or outbound adjustment
+### Disposal or stock-count adjustment
 
-1. Validate the batch, positive removal quantity, remaining quantity, and required reason.
+1. Validate the existing batch, positive absolute quantity, and required reason.
 2. Start a transaction and create the operation with a unique request token and business date.
-3. Insert a negative movement. The trigger updates the balance and rejects an overdraw.
-4. Commit the operation and movement together, or roll both back.
+3. For disposal or an outbound correction, insert a negative movement. For a documented inbound count correction, insert a positive movement against the existing batch. The trigger maintains the balance and rejects an overdraw or invalid movement direction.
+4. A positive correction cannot be used to record a new delivery; new deliveries must use the receipt workflow so a new batch and its cost are captured.
+5. Commit the operation and movement together, or roll both back.
 
 ## 10. Preliminary Schema Validation
 
