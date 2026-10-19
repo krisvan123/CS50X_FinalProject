@@ -27,7 +27,7 @@ ON products (category);
 
 CREATE TABLE IF NOT EXISTS stock_operations (
     id INTEGER PRIMARY KEY,
-    operation_type TEXT NOT NULL CHECK (operation_type IN ('receipt', 'sale', 'disposal', 'adjustment_out')),
+    operation_type TEXT NOT NULL CHECK (operation_type IN ('receipt', 'sale', 'disposal', 'adjustment_out', 'adjustment_in')),
     request_token TEXT NOT NULL UNIQUE CHECK (length(trim(request_token)) > 0),
     occurred_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
     business_date TEXT NOT NULL CHECK (
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS stock_operations (
     reason TEXT,
     note TEXT,
     CHECK (
-        (operation_type IN ('disposal', 'adjustment_out') AND reason IS NOT NULL AND length(trim(reason)) > 0)
+        (operation_type IN ('disposal', 'adjustment_out', 'adjustment_in') AND reason IS NOT NULL AND length(trim(reason)) > 0)
         OR (operation_type IN ('receipt', 'sale') AND reason IS NULL)
     )
 );
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS stock_batches (
     ),
     quantity_received INTEGER NOT NULL CHECK (quantity_received > 0),
     quantity_remaining INTEGER NOT NULL DEFAULT 0 CHECK (
-        quantity_remaining >= 0 AND quantity_remaining <= quantity_received
+        quantity_remaining >= 0
     ),
     unit_cost INTEGER NOT NULL CHECK (unit_cost >= 0),
     created_at_utc TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
@@ -181,7 +181,7 @@ BEGIN
     END;
     SELECT CASE
         WHEN NEW.quantity_delta > 0
-             AND (SELECT operation_type FROM stock_operations WHERE id = NEW.operation_id) <> 'receipt'
+             AND (SELECT operation_type FROM stock_operations WHERE id = NEW.operation_id) NOT IN ('receipt', 'adjustment_in')
         THEN RAISE(ABORT, 'only receipt operations may increase stock')
     END;
     SELECT CASE
@@ -214,6 +214,15 @@ BEGIN
                  )
              )
         THEN RAISE(ABORT, 'invalid sale movement')
+    END;
+    SELECT CASE
+        WHEN (SELECT operation_type FROM stock_operations WHERE id = NEW.operation_id) = 'adjustment_in'
+             AND (
+                 NEW.quantity_delta <= 0
+                 OR NEW.sale_item_id IS NOT NULL
+                 OR (SELECT is_archived FROM products WHERE id = NEW.product_id) IS NOT 0
+             )
+        THEN RAISE(ABORT, 'invalid inbound stock adjustment')
     END;
     SELECT CASE
         WHEN (SELECT operation_type FROM stock_operations WHERE id = NEW.operation_id) IN ('disposal', 'adjustment_out')
