@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="WarungWise inventory and expiry management for Indonesian warungs.">
+    <meta name="theme-color" content="#146c5a">
+    <title>{{ title|default("WarungWise") }} · WarungWise</title>
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuqAvIWLzeN8tE5YBujZqJLB"
+        crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Lewati ke konten utama</a>
+
+<div class="app-shell">
+    <aside class="sidebar" aria-label="Navigasi utama">
+        <a class="brand" href="{{ url_for('index') }}" aria-label="WarungWise, dashboard">
+            <span class="brand-mark" aria-hidden="true">W</span>
+            <span class="brand-copy">
+                <strong>WarungWise</strong>
+                <small>Inventory workspace</small>
+            </span>
+        </a>
+
+        <div class="sidebar-section-label">WORKSPACE</div>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" href="{{ url_for('index') }}" aria-current="page">
+                <span class="nav-icon" aria-hidden="true">▦</span>
+                <span>Dashboard</span>
+            </a>
+            <span class="nav-item disabled" aria-disabled="true">
+                <span class="nav-icon" aria-hidden="true">▤</span>
+                <span>Products</span>
+                <span class="nav-status">Next</span>
+            </span>
+            <span class="nav-item disabled" aria-disabled="true">
+                <span class="nav-icon" aria-hidden="true">▣</span>
+                <span>Stock batches</span>
+                <span class="nav-status">Planned</span>
+            </span>
+            <span class="nav-item disabled" aria-disabled="true">
+                <span class="nav-icon" aria-hidden="true">⇄</span>
+                <span>Movements</span>
+                <span class="nav-status">Planned</span>
+            </span>
+            <span class="nav-item disabled" aria-disabled="true">
+                <span class="nav-icon" aria-hidden="true">▥</span>
+                <span>Reports</span>
+                <span class="nav-status">Later</span>
+            </span>
+        </nav>
+
+        <div class="sidebar-spacer"></div>
+        <div class="workspace-card">
+            <span class="workspace-indicator" aria-hidden="true"></span>
+            <div>
+                <strong>Local workspace</strong>
+                <small>Single-shop edition</small>
+            </div>
+        </div>
+        <div class="sidebar-footnote">WarungWise · CS50x Final Project</div>
+    </aside>
+
+    <div class="main-column">
+        <header class="topbar">
+            <div class="topbar-context">
+                <span class="topbar-eyebrow">INVENTORY MANAGEMENT</span>
+                <span class="topbar-title">Your shop, in control.</span>
+            </div>
+            <div class="topbar-meta">
+                <span class="local-status-dot" aria-hidden="true"></span>
+                <span>Local environment</span>
+            </div>
+        </header>
+
+        <main id="main-content" class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="page-footer">
+            <span>WarungWise</span>
+            <span>Smarter Stock. Less Waste. Better Decisions.</span>
+        </footer>
+    </div>
+</div>
+</body>
+</html>
