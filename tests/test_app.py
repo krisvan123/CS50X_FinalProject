@@ -1004,7 +1004,7 @@ class WarungWiseAppTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.mimetype, "text/csv")
-        self.assertIn("attachment; filename=\\"warungwise_sales_", response.headers["Content-Disposition"])
+        self.assertIn('attachment; filename="warungwise_sales_', response.headers["Content-Disposition"])
         csv_text = response.get_data(as_text=True).lstrip("\\ufeff")
         rows = list(csv.reader(csv_text.splitlines()))
         self.assertEqual(len(rows), 2, "Only the header and today's transaction should be exported.")
