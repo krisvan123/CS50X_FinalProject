@@ -307,6 +307,7 @@ These scenarios define future test cases. They are test plans, not claims that t
 | AT-12 | A report is filtered to a date range | The operator exports CSV | The export contains only the filtered records and consistent totals |
 | AT-13 | A database operation fails during a stock-changing transaction | The operation is rolled back | Neither the stock change nor its associated record is partially committed |
 | AT-14 | There are no products or no matching report rows | The operator opens the relevant view | The UI shows a useful empty state rather than invented totals |
+| AT-15 | An existing batch has a documented stock-count discrepancy | The operator records a positive adjustment with a reason | The balance increases, the movement is traceable, and the batch audit difference remains zero |
 
 ## 9. Decisions to Resolve During Phase 3 — Database Design
 
