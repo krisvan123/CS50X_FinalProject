@@ -6,6 +6,7 @@
         <p class="eyebrow">INVENTORY CONTROL / AUDITABLE CHANGES</p>
         <h1>Waste & stock corrections</h1>
         <p class="page-subtitle">Record damaged or expired goods, or correct a physical count against an existing batch. Every change requires an explanation and creates an immutable movement record.</p>
+        <!-- AI-use disclosure: ChatGPT assisted with drafting this workflow template; the project author should review and understand it before submission. -->
     </div>
     <a class="button button-secondary" href="{{ url_for('movements') }}">Back to movement ledger</a>
 </section>
@@ -44,7 +45,7 @@
                 </div>
                 <div class="form-field">
                     <label for="business_date">Action date <span aria-hidden="true">*</span></label>
-                    <input id="business_date" name="business_date" type="date" max="{{ today }}" required value="{{ form_data.get('business_date', today) }}" {% if errors.get('business_date') %}aria-invalid="true" aria-describedby="business_date-error"{% endif %}>
+                    <input id="business_date" name="business_date" type="date" min="{{ today }}" max="{{ today }}" required value="{{ form_data.get('business_date', today) }}" {% if errors.get('business_date') %}aria-invalid="true" aria-describedby="business_date-error"{% endif %}>
                     {% if errors.get('business_date') %}<p class="field-error" id="business_date-error">{{ errors['business_date'] }}</p>{% endif %}
                 </div>
                 <div class="form-field">

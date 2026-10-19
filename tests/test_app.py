@@ -3,6 +3,9 @@
 Run from the repository root with: python -m unittest discover -s tests -v
 All tests use temporary SQLite databases and do not touch local user data.
 """
+
+# AI-use disclosure: ChatGPT assisted with drafting selected test cases; review
+# the scenarios and expected outcomes before relying on them for submission.
 from __future__ import annotations
 
 import csv
@@ -1087,6 +1090,86 @@ class WarungWiseAppTests(unittest.TestCase):
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM stock_operations WHERE request_token = ?", (token,)).fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT quantity_remaining FROM stock_batches WHERE product_id = ?", (product_id,)).fetchone()[0], 4)
+        finally:
+            connection.close()
+
+
+    def test_backdated_sale_cannot_make_later_batch_balance_negative(self) -> None:
+        from datetime import date, timedelta
+
+        product_id = self._create_product()
+        receipt_date = date.today() - timedelta(days=4)
+        prior_sale_date = date.today() - timedelta(days=2)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            connection.execute("PRAGMA foreign_keys = ON")
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (operation_type, request_token, business_date)
+                VALUES ('receipt', ?, ?)
+                """, ("historical-safe-receipt", receipt_date.isoformat()),
+            )
+            receipt_operation_id = cursor.lastrowid
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_batches (
+                    product_id, receipt_operation_id, received_date, expiry_date,
+                    quantity_received, quantity_remaining, unit_cost
+                ) VALUES (?, ?, ?, NULL, 10, 0, 1000)
+                """, (product_id, receipt_operation_id, receipt_date.isoformat()),
+            )
+            batch_id = cursor.lastrowid
+            connection.execute(
+                "INSERT INTO stock_movements (operation_id, product_id, batch_id, quantity_delta) VALUES (?, ?, ?, 10)",
+                (receipt_operation_id, product_id, batch_id),
+            )
+            cursor = connection.execute(
+                """
+                INSERT INTO stock_operations (operation_type, request_token, business_date)
+                VALUES ('sale', ?, ?)
+                """, ("historical-safe-sale", prior_sale_date.isoformat()),
+            )
+            sale_operation_id = cursor.lastrowid
+            cursor = connection.execute("INSERT INTO sales (operation_id) VALUES (?)", (sale_operation_id,))
+            sale_id = cursor.lastrowid
+            cursor = connection.execute(
+                """
+                INSERT INTO sale_items (sale_id, product_id, quantity, unit_selling_price)
+                VALUES (?, ?, 8, 3000)
+                """, (sale_id, product_id),
+            )
+            sale_item_id = cursor.lastrowid
+            connection.execute(
+                """
+                INSERT INTO stock_movements (
+                    operation_id, product_id, batch_id, sale_item_id, quantity_delta
+                ) VALUES (?, ?, ?, ?, -8)
+                """, (sale_operation_id, product_id, batch_id, sale_item_id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+
+        response = self._post_with_csrf(
+            "/sales/new", "/sales/new",
+            {
+                "product_id": str(product_id),
+                "business_date": receipt_date.isoformat(),
+                "quantity": "3",
+                "note": "Late entry must not break the historical ledger",
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(b"Available quantity: 2", response.data)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT quantity_remaining FROM stock_batches WHERE id = ?", (batch_id,)
+            ).fetchone()[0], 2)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM sales").fetchone()[0], 1)
+            self.assertEqual(connection.execute(
+                "SELECT difference FROM v_batch_balance_audit WHERE batch_id = ?", (batch_id,)
+            ).fetchone()[0], 0)
         finally:
             connection.close()
 

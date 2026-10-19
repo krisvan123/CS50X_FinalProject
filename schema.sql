@@ -1,3 +1,5 @@
+-- AI-use disclosure: ChatGPT assisted with drafting and refining parts of this schema.
+-- The project author should review the constraints, triggers, and audit views.
 PRAGMA foreign_keys = ON;
 BEGIN;
 

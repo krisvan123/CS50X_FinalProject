@@ -1,4 +1,8 @@
 """WarungWise Flask application entry point and product-management workflows."""
+
+# AI-use disclosure: ChatGPT assisted with planning, drafting, and refining selected
+# routes, validation, reporting, and tests. The project author should review and
+# understand these sections before submission.
 from __future__ import annotations
 
 import csv
@@ -153,6 +157,50 @@ def _fetch_inventory_snapshot(
                 item["batch_status"] = "Available"
         snapshot.append(item)
     return snapshot
+
+
+def _historical_sellable_capacity(
+    connection: sqlite3.Connection,
+    batch_id: int,
+    business_date: str,
+) -> int:
+    """Return the maximum safe backdated issue quantity for a batch.
+
+    A backdated sale must be supported on its business date and after each
+    subsequent movement. Current stock alone can conceal an intermediate
+    negative historical balance that later stock actions repaired.
+    """
+    movement_rows = connection.execute(
+        """
+        SELECT op.business_date, op.occurred_at_utc, sm.id, sm.quantity_delta
+        FROM stock_movements AS sm
+        JOIN stock_operations AS op ON op.id = sm.operation_id
+        WHERE sm.batch_id = ?
+        ORDER BY op.business_date ASC, op.occurred_at_utc ASC, sm.id ASC
+        """,
+        (batch_id,),
+    ).fetchall()
+
+    running_balance = 0
+    balance_on_sale_date = None
+    minimum_future_balance = None
+    for movement in movement_rows:
+        running_balance += int(movement["quantity_delta"])
+        if movement["business_date"] <= business_date:
+            balance_on_sale_date = running_balance
+        elif balance_on_sale_date is not None:
+            if minimum_future_balance is None:
+                minimum_future_balance = running_balance
+            else:
+                minimum_future_balance = min(minimum_future_balance, running_balance)
+
+    if balance_on_sale_date is None:
+        return 0
+
+    safe_quantity = balance_on_sale_date
+    if minimum_future_balance is not None:
+        safe_quantity = min(safe_quantity, minimum_future_balance)
+    return max(0, int(safe_quantity))
 
 
 def _safe_csv_text(value: Any) -> str:
@@ -1728,10 +1776,10 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         business_date = None
         try:
             business_date = date.fromisoformat(form_data["business_date"])
-            if business_date.isoformat() != form_data["business_date"] or business_date > today:
+            if business_date.isoformat() != form_data["business_date"] or business_date != today:
                 raise ValueError
         except (TypeError, ValueError):
-            errors["business_date"] = "Enter a valid business date that is not in the future."
+            errors["business_date"] = "Stock disposal and count corrections must be recorded using today's date."
 
         quantity = None
         if not re.fullmatch(r"[0-9]{1,19}", form_data["quantity"]):
@@ -2118,7 +2166,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         allocations: list[tuple[int, int]] = []
         if product is not None and business_date is not None and quantity is not None and quantity > 0:
-            batches = connection.execute(
+            candidate_batches = connection.execute(
                 """
                 SELECT id, quantity_remaining
                 FROM stock_batches
@@ -2132,7 +2180,18 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
                 """,
                 (int(product["id"]), business_date.isoformat(), business_date.isoformat()),
             ).fetchall()
-            available = sum(int(batch["quantity_remaining"]) for batch in batches)
+            batches = []
+            for candidate in candidate_batches:
+                batch_data = dict(candidate)
+                batch_data["sellable_capacity"] = min(
+                    int(batch_data["quantity_remaining"]),
+                    _historical_sellable_capacity(
+                        connection, int(batch_data["id"]), business_date.isoformat()
+                    ),
+                )
+                if batch_data["sellable_capacity"] > 0:
+                    batches.append(batch_data)
+            available = sum(int(batch["sellable_capacity"]) for batch in batches)
             if quantity > available:
                 errors["_form"] = (
                     f"Not enough sellable stock for this date. "
@@ -2141,7 +2200,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             else:
                 quantity_left = quantity
                 for batch in batches:
-                    allocation = min(quantity_left, int(batch["quantity_remaining"]))
+                    allocation = min(quantity_left, int(batch["sellable_capacity"]))
                     if allocation > 0:
                         allocations.append((int(batch["id"]), allocation))
                         quantity_left -= allocation
