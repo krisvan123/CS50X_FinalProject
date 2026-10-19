@@ -124,7 +124,7 @@ def _parse_product_form(form: Any) -> tuple[dict[str, str], dict[str, str], dict
 
 
 
-def _load_dashboard_data(connection: sqlite3.Connection) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+def _load_dashboard_data(connection: sqlite3.Connection) -> tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Build a dashboard summary from database records only."""
     today = date.today()
     today_iso = today.isoformat()
@@ -194,6 +194,68 @@ def _load_dashboard_data(connection: sqlite3.Connection) -> tuple[dict[str, Any]
         (today_iso,),
     ).fetchone()["total"]
 
+    # Dashboard watchlists are derived from current batch records, not cached totals.
+    low_stock_rows = connection.execute(
+        """
+        SELECT
+            p.id,
+            p.name,
+            p.sku,
+            p.unit,
+            p.minimum_stock,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN b.quantity_remaining > 0
+                             AND (b.expiry_date IS NULL OR b.expiry_date >= ?)
+                        THEN b.quantity_remaining
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS sellable_quantity
+        FROM products AS p
+        LEFT JOIN stock_batches AS b ON b.product_id = p.id
+        WHERE p.is_archived = 0
+        GROUP BY p.id, p.name, p.sku, p.unit, p.minimum_stock
+        HAVING sellable_quantity <= p.minimum_stock
+        ORDER BY sellable_quantity ASC, p.name COLLATE NOCASE ASC
+        LIMIT 6
+        """,
+        (today_iso,),
+    ).fetchall()
+    low_stock_items = [dict(row) for row in low_stock_rows]
+
+    expiry_rows = connection.execute(
+        """
+        SELECT
+            b.id AS batch_id,
+            p.name AS product_name,
+            p.sku,
+            p.unit,
+            b.quantity_remaining,
+            b.expiry_date
+        FROM stock_batches AS b
+        JOIN products AS p ON p.id = b.product_id
+        WHERE b.quantity_remaining > 0
+          AND b.expiry_date IS NOT NULL
+          AND b.expiry_date <= ?
+        ORDER BY
+            CASE WHEN b.expiry_date < ? THEN 0 ELSE 1 END,
+            b.expiry_date ASC,
+            b.id ASC
+        LIMIT 6
+        """,
+        (warning_end_iso, today_iso),
+    ).fetchall()
+    expiry_alerts: list[dict[str, Any]] = []
+    for row in expiry_rows:
+        alert = dict(row)
+        expiry_day = date.fromisoformat(alert["expiry_date"])
+        alert["is_expired"] = expiry_day < today
+        alert["days_to_expiry"] = (expiry_day - today).days
+        expiry_alerts.append(alert)
+
     sales_today = connection.execute(
         """
         SELECT
@@ -254,7 +316,7 @@ def _load_dashboard_data(connection: sqlite3.Connection) -> tuple[dict[str, Any]
         "business_date": today_iso,
     }
 
-    return stats, recent_movements
+    return stats, recent_movements, low_stock_items, expiry_alerts
 
 
 def create_app(test_config: dict[str, Any] | None = None) -> Flask:
@@ -297,7 +359,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
 
         try:
             connection = database.get_db()
-            stats, recent_movements = _load_dashboard_data(connection)
+            stats, recent_movements, low_stock_items, expiry_alerts = _load_dashboard_data(connection)
         except (sqlite3.Error, FileNotFoundError):
             current_app.logger.exception("Unable to load the WarungWise dashboard.")
             return render_template(
@@ -315,6 +377,8 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
             title="Inventory overview",
             stats=stats,
             recent_movements=recent_movements,
+            low_stock_items=low_stock_items,
+            expiry_alerts=expiry_alerts,
         )
 
     @app.context_processor
