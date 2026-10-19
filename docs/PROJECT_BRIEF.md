@@ -1,137 +1,180 @@
-# WarungWise — Project Brief
+# WarungWise — Project Brief and Scope
 
-> **Tagline:** *Smarter Stock. Less Waste. Better Decisions.*  
-> **Status:** Perencanaan — implementasi dan pengujian belum dimulai.
+**Project title:** WarungWise  
+**Tagline:** *Smarter Stock. Less Waste. Better Decisions.*  
+**Document status:** Phase 1 — planning  
+**Implementation status:** Not yet implemented or tested
 
-## 1. Ringkasan proyek
+## 1. Executive Summary
 
-WarungWise adalah aplikasi web inventaris untuk warung dan toko kelontong kecil di Indonesia. Aplikasi dirancang untuk membantu pengguna mengelola produk, stok per batch, tanggal kedaluwarsa, penjualan, pergerakan stok, dan rekomendasi restock berbasis aturan yang dapat dijelaskan.
+WarungWise is a proposed web application for inventory, batch expiry, and restock management in small Indonesian neighborhood grocery shops (warungs). It aims to help shop owners and staff maintain product records, track stock movements, monitor expiry dates at batch level, record sales and losses, and make more informed restocking decisions.
 
-Versi awal berjalan secara lokal dan tidak memerlukan API eksternal berbayar, layanan AI berbayar, integrasi pembayaran, atau layanan cloud. Data sintetis dapat digunakan untuk demonstrasi, dengan label yang jelas bahwa data tersebut bukan bukti validasi bisnis nyata.
+The application will use Python, Flask, SQLite, HTML, CSS, JavaScript, Bootstrap, and Jinja. Its core workflows will run locally and will not require paid external APIs, paid AI services, payment integrations, or a cloud subscription. Synthetic demonstration data may be included, clearly identified as sample data rather than evidence of real-world business validation.
 
-## 2. Masalah yang dituju
+WarungWise is intended to do more than display stock totals. Its central value is to connect inventory records and transaction history to practical operational information, while making calculations and limitations understandable to the user.
 
-Pencatatan persediaan secara manual dapat membuat pemilik warung terlambat mengetahui stok yang hampir habis, kesulitan membedakan batch dengan tanggal kedaluwarsa berbeda, membeli barang terlalu banyak, dan tidak mempunyai ringkasan transaksi yang konsisten untuk membantu keputusan pembelian.
+## 2. Problem Statement
 
-WarungWise akan menghubungkan catatan inventaris dan pergerakan stok dengan informasi yang mudah ditindaklanjuti. Aplikasi tidak menjanjikan pengurangan kerugian yang telah terbukti sebelum ada evaluasi lapangan.
+Small shops may manage inventory through handwritten notes, memory, or disconnected records. These approaches can make it difficult to know which products are running low, distinguish batches with different expiry dates, review sales history, or estimate how much stock should be replenished. They can also make it difficult to trace why inventory changed or to understand the recorded cost of goods that were damaged or expired.
 
-## 3. Target pengguna dan konteks penggunaan
+WarungWise will provide a structured, locally stored record of products, stock batches, sales, and stock movements. It will use these records to highlight inventory that needs attention and to provide transparent, rule-based restock recommendations. The project will not claim that the application reduces losses or improves real business outcomes unless those outcomes are evaluated with appropriate evidence.
 
-- Pemilik warung atau toko kelontong kecil.
-- Pengelola yang mencatat barang masuk dan penjualan.
-- Staf yang memeriksa batch, barang mendekati kedaluwarsa, serta barang rusak atau kedaluwarsa.
+## 3. Target Users and Use Context
 
-Asumsi versi pertama: satu warung, satu pengguna lokal, antarmuka berbahasa Indonesia, dan transaksi menggunakan Rupiah (IDR).
+The primary users are:
 
-## 4. Sasaran produk
+- Owners of small neighborhood grocery shops and warungs.
+- Shop managers responsible for receiving stock and recording sales.
+- Staff who monitor expiry dates and record damaged or expired goods.
 
-1. Menyediakan katalog produk yang dapat ditambah, dilihat, diedit, dicari, dan diarsipkan.
-2. Mencatat penerimaan stok pada tingkat batch, termasuk tanggal penerimaan dan tanggal kedaluwarsa jika tersedia.
-3. Menjaga agar transaksi dan perubahan stok konsisten, dapat ditelusuri, serta tidak menghasilkan stok negatif.
-4. Memisahkan stok layak jual dari stok yang sudah kedaluwarsa atau perlu perhatian.
-5. Menyediakan ringkasan penjualan dan rekomendasi restock yang menerangkan dasar perhitungannya.
-6. Menghasilkan aplikasi lokal yang dapat dijalankan, diuji, dan dijelaskan oleh pengembangnya.
+For the initial version, the application will assume one shop and one local user. The interface will use Indonesian, monetary values will be represented in Indonesian rupiah (IDR), and the application will be designed for use on a laptop or mobile browser. Authentication, multi-user permissions, and multi-branch synchronization are outside the initial scope.
 
-## 5. Ruang lingkup implementasi
+## 4. Project Objectives
 
-### MVP — fondasi fungsional
+WarungWise aims to:
 
-MVP harus diselesaikan dan diuji sebelum fitur pelaporan lanjutan dikembangkan.
+1. Provide product management features to create, view, edit, search, and archive product records.
+2. Track inventory by batch so that one product can have multiple quantities and expiry dates.
+3. Record stock receipts, sales, adjustments, and disposal of damaged or expired goods.
+4. Preserve an auditable history of stock movements and prevent sales from creating negative sellable inventory.
+5. Identify low stock, approaching expiry, and expired batches using clear status labels.
+6. Calculate sales summaries and recorded losses from database records rather than hard-coded dashboard values.
+7. Provide transparent restock recommendations based on recorded sales and configurable assumptions.
+8. Deliver a local application that can be run, tested, documented, and explained by its developer.
 
-- CRUD produk, pencarian, validasi, dan pengarsipan tanpa menghilangkan riwayat transaksi.
-- Penerimaan stok dan batch; setiap batch dapat memiliki tanggal kedaluwarsa berbeda.
-- Pencatatan penjualan, penyesuaian stok, serta pembuangan barang rusak atau kedaluwarsa.
-- Riwayat pergerakan stok yang dapat diaudit.
-- Validasi stok layak jual dan pencegahan stok negatif.
-- Tampilan dasar stok rendah serta status kedaluwarsa.
+## 5. Scope: MVP, Final Target, and Exclusions
 
-### Target fitur versi final
+### 5.1 MVP — Core Functional Foundation
 
-- Dashboard dari data database: produk aktif, stok rendah, batch mendekati kedaluwarsa, batch kedaluwarsa, dan ringkasan transaksi.
-- Rekomendasi restock berbasis rata-rata penjualan harian, lead time, stok pengaman, dan stok layak jual.
-- Laporan penjualan dan nilai barang yang tercatat rusak atau kedaluwarsa.
-- Filter laporan dan ekspor CSV.
-- Antarmuka responsif, aksesibilitas dasar, empty states, pesan sukses/error, dan konfirmasi tindakan penting.
-- Pengujian otomatis untuk aturan bisnis utama serta dokumentasi menjalankan aplikasi.
+The Minimum Viable Product (MVP) will establish the inventory workflows before reports and additional features are built. It must include:
 
-### Di luar ruang lingkup versi pertama
+- Product creation, listing, editing, searching, validation, and archiving.
+- Stock intake recorded as a batch, with a receipt date and an optional expiry date.
+- Sales recording that reduces stock in a controlled and traceable way.
+- Stock adjustments and records for damaged or expired goods that are removed from sellable inventory.
+- Stock movement history showing the movement type, quantity, timestamp, and relevant product or batch.
+- Batch-level expiry status and low-stock indicators.
+- Server-side validation and database transactions that prevent invalid or partial stock updates.
 
-Login dan role management, multi-cabang, sinkronisasi cloud, integrasi pemasok/marketplace/pembayaran, aplikasi mobile native, pemindaian barcode, serta prediksi machine learning. Fitur-fitur tersebut hanya akan dipertimbangkan jika alur inti telah stabil dan ada alasan yang jelas.
+**MVP completion gate:** A user must be able to create a product, receive stock into a batch, record a valid sale, and verify that both the stock balance and movement history are updated correctly. Invalid sales must be rejected without changing inventory.
 
-## 6. Teknologi
+### 5.2 Target Features for the Final Version
 
-- Python untuk aturan bisnis dan backend.
-- Flask untuk routing aplikasi web.
-- SQLite untuk penyimpanan data lokal.
-- HTML5, CSS3, Bootstrap, JavaScript, dan Jinja untuk antarmuka.
-- Python standard library untuk ekspor CSV jika mencukupi.
-- Dependensi tambahan hanya akan dipakai jika memiliki manfaat yang jelas dan dicantumkan secara akurat.
+After the MVP is stable and tested, the project will target:
 
-## 7. Aturan bisnis awal
+- A dashboard with active product counts, low-stock alerts, upcoming expiry, expired batches, and transaction summaries.
+- Rule-based restock recommendations using average daily sales, replenishment lead time, safety stock, and sellable inventory.
+- Sales reports and reports of goods recorded as damaged or expired.
+- Date filters and CSV export.
+- Responsive layouts, accessible labels, readable status text, informative empty states, clear success and error messages, and confirmations for important actions.
+- Automated tests for core business rules, documented setup instructions, and a comprehensive project README.
 
-1. **Stok per batch:** stok tersedia dihitung dari sisa tiap batch, bukan dari satu angka agregat yang tidak dapat ditelusuri.
-2. **FEFO:** untuk barang yang memiliki tanggal kedaluwarsa, pengurangan stok diprioritaskan dari batch dengan tanggal kedaluwarsa paling awal yang masih valid (*First Expired, First Out*). Tanggal penerimaan menjadi pemecah seri.
-3. **Batch kedaluwarsa:** batch yang sudah kedaluwarsa tidak boleh dipakai untuk memenuhi penjualan. Barang tersebut perlu dicatat sebagai penyesuaian/pembuangan yang dapat ditelusuri.
-4. **Transaksi atomik:** pengurangan/penambahan stok dan penulisan riwayat harus berhasil bersama atau dibatalkan bersama jika operasi gagal.
-5. **Pendapatan dan laba:** pendapatan tidak sama dengan laba. Estimasi laba kotor perlu memperhitungkan harga modal yang relevan. Nilai kerugian barang dibuang dihitung dari jumlah yang dicatat dibuang dan biaya modal yang berlaku, bukan dari peringatan kedaluwarsa saja.
-6. **Rekomendasi transparan:** rekomendasi adalah estimasi, bukan prediksi pasti. Jika data penjualan tidak cukup, aplikasi harus menyatakan keterbatasan tersebut.
+Features will be included only when they can be implemented, tested, and explained reliably. The final feature list may be narrowed if necessary to protect the correctness of the core workflows.
 
-Rumus awal:
+### 5.3 Explicitly Out of Scope for Version One
 
-    target_stok = (rata_rata_penjualan_harian * lead_time_hari) + stok_pengaman
-    saran_restock = max(0, target_stok - stok_layak_jual)
+The initial version will not include user accounts, role-based access control, multiple shops or branches, cloud synchronization, supplier or marketplace integrations, payment processing, a native mobile application, barcode-scanning hardware, or machine-learning-based forecasting.
 
-Stok layak jual mengecualikan batch yang kedaluwarsa atau tidak layak dijual. Versi pertama belum memperhitungkan pesanan pembelian yang belum diterima.
+These exclusions keep the project focused on inventory correctness and transparent business logic. They may be reconsidered only after the core application works reliably and a clear requirement justifies the added complexity.
 
-## 8. Kriteria keberhasilan yang dapat diuji
+## 6. Technology Stack and Rationale
 
-- Produk dapat dibuat, diedit, dicari, dan diarsipkan tanpa merusak riwayat.
-- Penerimaan stok menambah batch dan mencatat pergerakan.
-- Penjualan mengurangi stok dengan aturan FEFO dan penjualan melebihi stok layak jual ditolak.
-- Operasi gagal tidak meninggalkan perubahan stok parsial.
-- Peringatan kedaluwarsa mengikuti tanggal setiap batch.
-- Barang rusak/kedaluwarsa yang dibuang dicatat dan perhitungan nilainya dapat ditelusuri.
-- Rekomendasi restock cocok dengan rumus dan menangani produk tanpa data penjualan yang memadai.
-- Laporan dan CSV cocok dengan data database serta filter yang dipilih.
-- Input yang tidak valid ditangani dengan aman dan jelas.
-- Aplikasi dapat diinisialisasi dan dijalankan lokal mengikuti dokumentasi, tanpa API berbayar.
+- **Python:** implements validation and business rules.
+- **Flask:** provides lightweight web routing and request handling.
+- **SQLite:** stores products, batches, and transaction records locally without requiring a separate database server.
+- **HTML5 and Jinja:** define page structure and render database-backed information.
+- **CSS3 and Bootstrap:** provide consistent styling and responsive layouts.
+- **JavaScript:** supports small interface interactions where needed, without moving authoritative inventory validation away from the server.
+- **Python standard library:** will be preferred for CSV export and general data processing where sufficient.
 
-Kriteria ini adalah target pengujian, **bukan klaim bahwa implementasi telah selesai atau tes telah lulus**.
+No paid API or AI service is required. Additional dependencies will be introduced only where they provide a specific benefit, and all actual dependencies will be documented accurately.
 
-## 9. Roadmap milestone
+## 7. Initial Business Rules and Assumptions
 
-1. Project brief dan penetapan ruang lingkup.
-2. Requirements, user flow, serta validasi tiap alur.
-3. Desain skema database, relasi, constraints, dan transaksi.
-4. Fondasi Flask, koneksi SQLite, konfigurasi, dan template dasar.
-5. Manajemen produk dan validasi.
-6. Penerimaan stok dan pelacakan batch.
-7. Penjualan, FEFO, penyesuaian, dan pergerakan stok.
-8. Dashboard serta peringatan kedaluwarsa.
-9. Rekomendasi restock dan pengujian batas kasus.
-10. Laporan, filter, dan ekspor CSV.
-11. Penyempurnaan UI responsif dan aksesibilitas.
-12. Pengujian otomatis/manual dan review keamanan.
-13. README berdasarkan implementasi nyata dan video demo maksimal tiga menit.
-14. Submission sesuai pedoman CS50x 2026 dan verifikasi Gradebook.
+### 7.1 Batch-Level Inventory
 
-Setiap milestone mempunyai gerbang review: fitur harus dapat dijelaskan dan diuji sebelum tahap selanjutnya dimulai.
+A product may have multiple batches with different receipt dates and expiry dates. Sellable inventory must be derived from the remaining quantities of its eligible batches. A single aggregate product quantity must not replace the batch records or their history.
 
-## 10. Risiko dan mitigasi
+### 7.2 Expiry and FEFO
 
-| Risiko | Mitigasi |
+For products with expiry dates, sales will follow **First Expired, First Out (FEFO)**: eligible batches with the earliest expiry date are used first. Receipt date will act as a tie-breaker where necessary. Expired or otherwise ineligible batches must not satisfy a sale. Products without an expiry date may be supported, but the application must represent their expiry status as unknown or not applicable rather than inventing a date.
+
+### 7.3 Atomic Stock Transactions
+
+A stock change and its corresponding movement record must succeed together or be rolled back together. Database constraints, server-side validation, and transaction handling will be used to prevent negative quantities and inconsistent records. Repeated form submissions and failed database operations must be considered during implementation and testing.
+
+### 7.4 Revenue, Profit, and Recorded Loss
+
+Revenue is not the same as profit. Sales revenue will be calculated from recorded sales. Gross profit estimates must account for the relevant cost basis of goods sold. The value of damaged or expired goods removed from inventory will be calculated from the quantity recorded as disposed of and its applicable cost basis. An expiry warning alone is not a realized loss.
+
+### 7.5 Restock Recommendation
+
+The initial rule-based calculation is:
+
+    target_stock = (average_daily_sales * lead_time_days) + safety_stock
+    suggested_restock = max(0, target_stock - sellable_stock)
+
+The application will explain the inputs and assumptions behind each recommendation. Recommendations are estimates, not guarantees. If sales history is insufficient, the interface must disclose that limitation and avoid presenting an unsupported estimate as reliable. The first version will not subtract unreceived purchase orders because purchase-order tracking is not included in scope.
+
+## 8. Measurable Acceptance Criteria
+
+The final application will be assessed against the following observable outcomes:
+
+1. Products can be created, edited, searched, and archived without erasing historical movements.
+2. Receiving stock creates or updates the intended batch and records the corresponding movement.
+3. A valid sale reduces eligible batch quantities and creates a sales movement.
+4. A sale exceeding available sellable inventory is rejected, with no partial stock change.
+5. Batch expiry statuses are calculated from batch-level dates and a defined warning window.
+6. Expired batches are excluded from sellable inventory and can be recorded as disposed of through a traceable operation.
+7. Recorded loss calculations use disposed quantities and the documented cost basis.
+8. Restock recommendations follow the defined formula and handle insufficient sales history, zero stock, and sufficient stock.
+9. Dashboard totals, date-filtered reports, and CSV exports agree with the underlying database records.
+10. Invalid or missing form values produce understandable feedback and do not corrupt stored data.
+11. The application can be initialized and run locally using the documented instructions without a paid external service.
+12. Automated and manual test results are recorded honestly; no feature or test is described as complete until it has actually been verified.
+
+These are planned acceptance criteria. They are not claims that the application has already been implemented or that any tests have passed.
+
+## 9. Why the Project Is Substantive
+
+WarungWise involves more than basic create, read, update, and delete operations. Its main technical challenges include modeling one-to-many relationships between products and batches, preserving an auditable movement history, applying FEFO to sales, updating inventory atomically, validating business constraints, and producing correct reports from related records.
+
+It also requires practical interface design, transparent calculations, automated tests, and documentation. These elements provide opportunities to apply Python, SQL, algorithms, web programming, and software testing to a specific operational problem. The goal is not to maximize the number of features, but to deliver a coherent application whose behavior can be demonstrated and explained.
+
+## 10. Implementation Roadmap
+
+1. **Project Proposal and Scope:** finalize the problem statement, MVP, exclusions, risks, and acceptance criteria.
+2. **Requirements and User Flows:** define inputs, expected outcomes, validation rules, and failure cases for each workflow.
+3. **Database Design:** specify tables, relationships, constraints, indexing where justified, and transaction boundaries.
+4. **Backend Foundation:** establish Flask configuration, SQLite access, base templates, and error handling.
+5. **Product Management:** implement product CRUD, search, validation, and archiving.
+6. **Stock Intake and Batch Tracking:** implement receiving, batch quantities, receipt dates, and expiry dates.
+7. **Sales and Stock Movements:** implement FEFO, stock adjustments, disposal, audit history, and atomic transactions.
+8. **Dashboard and Expiry Alerts:** derive key summaries and alerts from stored records.
+9. **Restock Recommendations:** implement the documented calculation and test boundary cases.
+10. **Reports and CSV Export:** add date filters, summaries, and verified CSV output.
+11. **Interface Polish:** improve responsiveness, accessibility, empty states, and user feedback.
+12. **Testing and Security Review:** execute automated and manual tests and address discovered defects.
+13. **Documentation and Demo:** document the actual implementation and prepare a project demonstration of no more than three minutes.
+14. **Submission Review:** follow the official CS50x 2026 instructions, submit the project, and verify its status in the course Gradebook.
+
+Each milestone must have a review gate. Work should not proceed on the assumption that a stage succeeded until its acceptance checks have been performed.
+
+## 11. Key Risks and Mitigations
+
+| Risk | Mitigation |
 |---|---|
-| Ruang lingkup melebar | Selesaikan MVP lebih dulu; tunda fitur noninti. |
-| Stok tidak sinkron | Gunakan transaksi database dan satu aturan perhitungan stok per batch. |
-| Rekomendasi menyesatkan | Jelaskan rumus, asumsi, dan keterbatasan data. |
-| Kehilangan data | Dokumentasikan backup dan inisialisasi tanpa menghapus database yang sudah ada. |
-| Klaim pengujian tidak akurat | Laporkan hasil aktual; jangan menyatakan tes lulus sebelum dijalankan. |
-| Risiko rahasia masuk repository | Jangan commit token, password, database pengguna nyata, atau data sensitif. |
+| Scope becomes too large | Complete and test the MVP before adding enhancements. |
+| Inventory and movement history disagree | Use database transactions and a single, documented stock model. |
+| Restock advice is misleading | Show the formula, assumptions, and limits of available data. |
+| Local records are accidentally lost | Document database initialization and backup procedures; never silently replace an existing database. |
+| Tests or business impact are overstated | Report observed results only and label synthetic data clearly. |
+| Secrets or sensitive data enter the repository | Exclude credentials, tokens, and private business data from source control. |
 
-## 11. Kepatuhan dan transparansi
+## 12. Academic Integrity and AI-Assistance Transparency
 
-Pedoman resmi CS50x 2026 menjadi rujukan utama untuk persyaratan proyek dan submission: https://cs50.harvard.edu/x/project/.
+The official CS50x 2026 Final Project specification is the primary reference for project expectations and submission requirements: https://cs50.harvard.edu/x/project/.
 
-Bantuan AI harus diungkapkan secara jujur sesuai bentuk bantuan yang benar-benar digunakan. Dokumen perencanaan ini disusun dengan bantuan ChatGPT berdasarkan spesifikasi proyek yang diberikan pemilik proyek. Pemilik proyek perlu meninjau, mengadaptasi, dan memahami keputusan desain sebelum implementasi. Komentar pada kode akan disesuaikan dengan bantuan AI yang benar-benar digunakan pada bagian tersebut.
+CS50x permits the use of external AI tools for the final project, but the essence of the work must remain the student's own, and use of such tools must be cited in relevant code comments as required by the official specification. This planning document was prepared with ChatGPT assistance based on the project requirements supplied by the student. The student must review, adapt, and understand the design decisions and implementation. Any code comments describing AI assistance must accurately reflect the assistance actually used for that specific code.
 
-Tidak ada klaim riset pengguna, validasi lapangan, hasil tes, atau hasil bisnis yang dinyatakan telah terjadi pada tahap perencanaan ini.
+No user research, field validation, test result, or business outcome is claimed at this planning stage.
