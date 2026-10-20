@@ -67,6 +67,16 @@
 </section>
 
 {% set attention_count = stats.low_stock_products + stats.near_expiry_batches + stats.expired_batches %}
+{% if active_count == 0 and not config.get('DEMO_READ_ONLY', False) %}
+<section class="ww-demo-hint" aria-label="Optional sample inventory">
+    <div class="ww-demo-hint-icon" aria-hidden="true">✳</div>
+    <div class="ww-demo-hint-copy">
+        <strong>Want to explore with sample inventory?</strong>
+        <p>Your current workspace is empty. To use fictional products, sales and expiry alerts without changing this database, stop Flask and run <code>python run_demo.py</code> from the project folder.</p>
+    </div>
+</section>
+{% endif %}
+
 <section class="welcome-strip {% if attention_count > 0 %}needs-review{% endif %}" aria-label="Inventory notifications">
     <div class="welcome-icon" aria-hidden="true">{% if attention_count > 0 %}!{% else %}✓{% endif %}</div>
     <div>
