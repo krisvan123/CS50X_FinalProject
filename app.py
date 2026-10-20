@@ -534,6 +534,7 @@ def create_app(test_config: dict[str, Any] | None = None) -> Flask:
         SECRET_KEY=os.environ.get("WARUNGWISE_SECRET_KEY") or os.urandom(32),
         DATABASE=os.environ.get("WARUNGWISE_DATABASE") or str(Path(app.instance_path) / "warungwise.db"),
         DEMO_READ_ONLY=os.environ.get("WARUNGWISE_DEMO_READ_ONLY", "").strip().lower() in {"1", "true", "yes"},
+        DEMO_SAMPLE_DATA=os.environ.get("WARUNGWISE_DEMO_SAMPLE", "").strip().lower() in {"1", "true", "yes"},
         MAX_CONTENT_LENGTH=1024 * 1024,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
