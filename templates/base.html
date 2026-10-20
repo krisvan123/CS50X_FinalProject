@@ -104,13 +104,14 @@
     <div class="main-column">
         <header class="topbar">
             <div class="topbar-context">
-                <a class="mobile-brand" href="{{ url_for('index') }}">W <span>WarungWise</span></a>
-                <span class="topbar-eyebrow">INVENTORY MANAGEMENT</span>
-                <span class="topbar-title">Your shop, in control.</span>
+                <span class="topbar-eyebrow">WARUNGWISE / WORKSPACE</span>
+                <span class="topbar-title">Your inventory command center</span>
             </div>
             <div class="topbar-meta">
-                <span class="local-status-dot" aria-hidden="true"></span>
-                <span>{% if config.get('DEMO_READ_ONLY', False) %}Public demo · read-only{% else %}Local environment{% endif %}</span>
+                <span class="environment-pill"><span class="local-status-dot" aria-hidden="true"></span>{% if config.get('DEMO_READ_ONLY', False) %}Read-only demo{% else %}Local workspace{% endif %}</span>
+                {% if not config.get('DEMO_READ_ONLY', False) %}
+                <a class="topbar-quick-action" href="{{ url_for('new_sale') }}">+ New sale <span aria-hidden="true">↗</span></a>
+                {% endif %}
             </div>
         </header>
 
