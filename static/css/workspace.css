@@ -560,3 +560,13 @@ table tbody tr:last-child td { border-bottom:0; }
   .ww-shortcut,.ww-hero-actions a,.button,.nav-item { transition:none!important; }
   .ww-shortcut:hover,.ww-hero-actions a:hover,.button:hover,.nav-item:hover { transform:none!important; }
 }
+
+/* Actionable warning state for the database-backed dashboard banner. */
+.welcome-strip.needs-review { background:#fff8eb;border-color:#f1dfbc;color:#765321; }
+.welcome-strip.needs-review .welcome-icon { background:#f9e4c2;color:#99682b; }
+.welcome-strip.needs-review strong { color:#805720; }
+.welcome-strip.needs-review p { color:#957b57; }
+.welcome-strip.needs-review .status-pill { border-color:#f0dfc1;color:#826234; }
+@media (max-width: 767.98px) {
+  .welcome-strip.needs-review { padding:15px; }
+}
