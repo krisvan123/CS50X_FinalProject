@@ -37,48 +37,48 @@
             <div class="nav-group">
                 <div class="sidebar-section-label">OVERVIEW</div>
                 <a class="nav-item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">▦</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>
                 <span>Dashboard</span>
             </a>
             </div>
             <div class="nav-group">
                 <div class="sidebar-section-label">STOCK OPERATIONS</div>
                 <a class="nav-item {% if request.endpoint in ('products', 'new_product', 'edit_product') %}active{% endif %}" href="{{ url_for('products') }}" {% if request.endpoint in ('products', 'new_product', 'edit_product') %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">▤</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/></svg></span>
                 <span>Products</span>
             </a>
                 <a class="nav-item {% if request.endpoint in ('batches', 'new_batch') %}active{% endif %}" href="{{ url_for('batches') }}" {% if request.endpoint in ('batches', 'new_batch') %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">▣</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 10h16M10 10v10M8 7h2"/></svg></span>
                 <span>Stock batches</span>
             </a>
                 <a class="nav-item {% if request.endpoint in ('sales', 'new_sale') %}active{% endif %}" href="{{ url_for('sales') }}" {% if request.endpoint in ('sales', 'new_sale') %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">↗</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
                 <span>Sales</span>
             </a>
                 <a class="nav-item {% if request.endpoint == 'new_stock_action' %}active{% endif %}" href="{{ url_for('new_stock_action') }}" {% if request.endpoint == 'new_stock_action' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">↘</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20z"/><path d="M12 9v5M12 17h.01"/></svg></span>
                 <span>Waste & corrections</span>
             </a>
             </div>
             <div class="nav-group">
                 <div class="sidebar-section-label">INSIGHTS & REPORTS</div>
                 <a class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}" href="{{ url_for('recommendations') }}" {% if request.endpoint == 'recommendations' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">◎</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17h4l4-6 4 3 6-9"/><path d="M16 5h5v5"/></svg></span>
                 <span>Restock advice</span>
             </a>
                 <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">⇄</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h14m-4-4 4 4-4 4M17 17H3m4-4-4 4 4 4"/></svg></span>
                 <span>Movements</span>
             </a>
                 <a class="nav-item {% if request.endpoint in ('reports', 'export_report') %}active{% endif %}" href="{{ url_for('reports') }}" {% if request.endpoint in ('reports', 'export_report') %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">▥</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-8M22 20V8"/><path d="M2 20h20"/></svg></span>
                 <span>Reports</span>
             </a>
             </div>
             <div class="nav-group">
                 <div class="sidebar-section-label">WORKSPACE</div>
                 <a class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">⚙</span>
+                <span class="nav-icon" aria-hidden="true"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg></span>
                 <span>Settings</span>
             </a>
             </div>
