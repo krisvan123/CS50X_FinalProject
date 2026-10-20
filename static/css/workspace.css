@@ -37,7 +37,7 @@ h1,h2,h3,h4,h5,h6,.metric-value,.sales-total,.brand-copy strong,
   border-right: 1px solid rgba(255,255,255,.09);
   box-shadow: 8px 0 40px rgba(5,33,24,.04);
 }
-.sidebar::before,.sidebar::after,.sidebar-orbit-light { display: none !important; }
+/* Keep the orbit layers from styles.css visible: these are intentional brand details. */
 .sidebar > * { z-index: 1; }
 .brand {
   gap: 12px;
@@ -575,3 +575,87 @@ table tbody tr:last-child td { border-bottom:0; }
 .ww-ui-icon { display:block;width:20px;height:20px;flex:0 0 20px; }
 .metric-icon .ww-ui-icon { width:18px;height:18px;flex-basis:18px; }
 .ww-shortcut-icon .ww-ui-icon { width:21px;height:21px;flex-basis:21px; }
+
+/* Animated orbit restoration — preserve the original visual signature. 
+   AI-use disclosure: ChatGPT restored and refined the decorative animated rings. */
+.sidebar {
+  isolation: isolate;
+}
+.sidebar::before,
+.sidebar::after,
+.sidebar-orbit-light {
+  display: block;
+  pointer-events: none;
+}
+.sidebar::before {
+  right: -48px;
+  bottom: 118px;
+  width: 210px;
+  height: 210px;
+  opacity: .85;
+  border-color: rgba(200, 246, 217, .10);
+  border-top-color: rgba(200, 246, 217, .34);
+  border-right-color: rgba(200, 246, 217, .2);
+  animation: ww-sidebar-orbit 28s linear infinite;
+}
+.sidebar::after {
+  opacity: .75;
+  border-top-color: rgba(200, 246, 217, .22);
+  animation: ww-sidebar-drift 21s ease-in-out infinite alternate;
+}
+.sidebar-orbit-light {
+  right: -48px;
+  bottom: 118px;
+  width: 210px;
+  height: 210px;
+  opacity: .86;
+  background: conic-gradient(
+    from 0deg, transparent 0deg 288deg,
+    rgba(168, 251, 190, .04) 300deg,
+    rgba(209, 255, 218, .88) 324deg,
+    rgba(112, 244, 162, .66) 340deg,
+    transparent 358deg 360deg
+  );
+  animation: ww-orbit-light-spin 11s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(111, 255, 162, .24));
+}
+.sidebar > :not(.sidebar-orbit-light) {
+  position: relative;
+  z-index: 1;
+}
+.workspace-card { isolation: isolate; }
+.workspace-card::after {
+  display: block;
+  opacity: .48;
+  z-index: 0;
+  animation: ww-workspace-sweep 12s ease-in-out infinite;
+}
+.workspace-card > * { position: relative; z-index: 1; }
+.workspace-indicator {
+  animation: ww-status-pulse 3.5s ease-out infinite;
+}
+.workspace-indicator::after {
+  display: block;
+  animation: ww-indicator-spin 7s linear infinite;
+}
+@media (max-width: 767.98px) {
+  .sidebar::before, .sidebar::after, .sidebar-orbit-light {
+    right: -24px;
+    top: -23px;
+    bottom: auto;
+    width: 145px;
+    height: 145px;
+    opacity: .33;
+  }
+  .sidebar::after { opacity: .23; }
+  .sidebar-orbit-light { opacity: .47; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar::before, .sidebar::after,
+  .sidebar-orbit-light, .workspace-card::after,
+  .workspace-indicator, .workspace-indicator::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sidebar-orbit-light { filter: none; }
+}
