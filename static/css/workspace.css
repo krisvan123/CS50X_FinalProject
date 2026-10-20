@@ -465,3 +465,98 @@ table tbody tr:last-child td { border-bottom:0; }
 .empty-state { color:#627c68; }
 .empty-state strong { color:#294731;font-size:13px; }
 .empty-state p { font-size:11px; }
+
+
+/* Responsive behavior, constrained to preserve the functional views. */
+@media (min-width: 768px) {
+  .sidebar {
+    position:sticky;top:0;height:100dvh;min-height:100vh;
+    overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:thin;scrollbar-color:rgba(195,233,205,.23) transparent;
+  }
+}
+@media (max-width: 1250px) {
+  .ww-hero { grid-template-columns:minmax(0,1fr);gap:25px; }
+  .ww-hero-panel { max-width:none; }
+  .ww-coverage-content { justify-content:flex-start; }
+  .ww-coverage-ring { width:140px;flex-basis:140px; }
+  .ww-hero h1 { max-width:700px; }
+  .ww-hero-copy > p { max-width:590px; }
+}
+@media (max-width: 1050px) {
+  .ww-shortcuts { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ww-shortcut:last-child { grid-column:1/-1; }
+  .app-shell { grid-template-columns:230px minmax(0,1fr); }
+  .sidebar { padding-left:13px;padding-right:13px; }
+}
+@media (max-width: 767.98px) {
+  .app-shell { display:block; }
+  .sidebar { position:relative;height:auto;min-height:0;overflow:visible;padding:17px 17px 0; }
+  .brand { margin:0 0 14px;padding-bottom:0;border-bottom:0; }
+  .brand-mark { width:37px;height:37px;flex-basis:37px;border-radius:11px;font-size:23px; }
+  .brand-copy strong { font-size:17px; }
+  .sidebar-nav {
+    display:flex;flex-wrap:nowrap;gap:8px;
+    overflow-x:auto;overflow-y:hidden;
+    margin:0 -17px;padding:0 17px 13px;
+    scrollbar-width:thin;scrollbar-color:rgba(226,255,238,.2) transparent;
+  }
+  .nav-group { display:flex;flex:0 0 auto;gap:7px;margin:0; }
+  .nav-group .sidebar-section-label { display:none; }
+  .nav-item { min-height:38px;padding:8px 11px;white-space:nowrap;font-size:11px;border-radius:9px; }
+  .nav-icon { width:17px;font-size:14px; }
+  .sidebar-bottom { display:none; }
+  .topbar { min-height:62px;padding:11px 19px;position:relative; }
+  .topbar-title { font-size:11px; }
+  .topbar-quick-action { padding:9px 11px; }
+  .environment-pill { padding:7px 9px;font-size:9px; }
+  .main-content { padding:21px 17px 43px; }
+  .ww-hero { border-radius:20px;padding:27px;gap:24px; }
+  .ww-hero h1 { margin-top:15px;font-size:clamp(37px,7.2vw,51px); }
+  .ww-hero-copy > p { font-size:12px; }
+  .ww-hero-panel { padding:20px; }
+  .ww-shortcuts { gap:10px;margin-bottom:24px; }
+  .ww-shortcut { min-height:75px;padding:14px; }
+  .welcome-strip { margin-bottom:25px; }
+  .page-heading h1 { font-size:32px; }
+  .page-footer { padding:18px 20px; }
+  .metric-card { min-height:148px;padding:19px; }
+  .metric-value { font-size:34px; }
+  .alert-watchlist-card { padding:20px 20px 0; }
+  .watchlist-link { margin:0 -20px;padding:13px 20px; }
+}
+@media (max-width: 610px) {
+  .ww-shortcuts { grid-template-columns:minmax(0,1fr); }
+  .ww-shortcut:last-child { grid-column:auto; }
+  .ww-hero h1 { font-size:clamp(37px,9.5vw,49px); }
+  .ww-hero-actions a { flex:1 1 auto; }
+  .ww-hero-panel { padding:19px; }
+  .ww-coverage-content { gap:17px; }
+  .ww-coverage-ring { width:121px;flex-basis:121px; }
+  .ww-coverage-core strong { font-size:31px; }
+  .ww-panel-alerts { grid-template-columns:1fr 1fr;gap:10px; }
+  .ww-panel-alerts div { flex-direction:column;align-items:flex-start; }
+  .welcome-strip { align-items:flex-start; }
+  .welcome-strip .status-pill { display:none; }
+  .topbar-eyebrow { display:none; }
+  .topbar-title { font-size:11px; }
+  .topbar-meta { gap:6px; }
+  .environment-pill { display:none; }
+}
+@media (max-width: 420px) {
+  .ww-hero { padding:23px 19px; }
+  .ww-hero h1 { font-size:38px; }
+  .ww-coverage-content { flex-direction:column;text-align:center; }
+  .ww-coverage-detail { max-width:230px; }
+  .ww-coverage-ring { flex-basis:auto;width:130px; }
+  .ww-panel-topline { flex-wrap:wrap; }
+  .ww-hero-footer { gap:7px; }
+  .metric-card { min-height:141px; }
+  .alert-watchlist-card .section-heading h2 { font-size:17px; }
+  .sales-card,.movement-card { padding:20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { scroll-behavior:auto !important; }
+  .ww-shortcut,.ww-hero-actions a,.button,.nav-item { transition:none!important; }
+  .ww-shortcut:hover,.ww-hero-actions a:hover,.button:hover,.nav-item:hover { transform:none!important; }
+}
