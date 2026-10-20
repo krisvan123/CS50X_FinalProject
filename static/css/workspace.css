@@ -570,3 +570,8 @@ table tbody tr:last-child td { border-bottom:0; }
 @media (max-width: 767.98px) {
   .welcome-strip.needs-review { padding:15px; }
 }
+
+/* Lightweight SVG iconography shares a single stroke language throughout the UI. */
+.ww-ui-icon { display:block;width:20px;height:20px;flex:0 0 20px; }
+.metric-icon .ww-ui-icon { width:18px;height:18px;flex-basis:18px; }
+.ww-shortcut-icon .ww-ui-icon { width:21px;height:21px;flex-basis:21px; }
