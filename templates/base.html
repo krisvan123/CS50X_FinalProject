@@ -33,44 +33,55 @@
             </span>
         </a>
 
-        <div class="sidebar-section-label">YOUR WORKSPACE</div>
         <nav class="sidebar-nav" aria-label="Main sections">
-            <a class="nav-item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>
+            <div class="nav-group">
+                <div class="sidebar-section-label">OVERVIEW</div>
+                <a class="nav-item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▦</span>
                 <span>Dashboard</span>
             </a>
-            <a class="nav-item {% if request.endpoint in ('products', 'new_product', 'edit_product') %}active{% endif %}" href="{{ url_for('products') }}" {% if request.endpoint in ('products', 'new_product', 'edit_product') %}aria-current="page"{% endif %}>
+            </div>
+            <div class="nav-group">
+                <div class="sidebar-section-label">STOCK OPERATIONS</div>
+                <a class="nav-item {% if request.endpoint in ('products', 'new_product', 'edit_product') %}active{% endif %}" href="{{ url_for('products') }}" {% if request.endpoint in ('products', 'new_product', 'edit_product') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▤</span>
                 <span>Products</span>
             </a>
-            <a class="nav-item {% if request.endpoint in ('batches', 'new_batch') %}active{% endif %}" href="{{ url_for('batches') }}" {% if request.endpoint in ('batches', 'new_batch') %}aria-current="page"{% endif %}>
+                <a class="nav-item {% if request.endpoint in ('batches', 'new_batch') %}active{% endif %}" href="{{ url_for('batches') }}" {% if request.endpoint in ('batches', 'new_batch') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▣</span>
                 <span>Stock batches</span>
             </a>
-            <a class="nav-item {% if request.endpoint == 'new_stock_action' %}active{% endif %}" href="{{ url_for('new_stock_action') }}" {% if request.endpoint == 'new_stock_action' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">↘</span>
-                <span>Waste & corrections</span>
-            </a>
-            <a class="nav-item {% if request.endpoint in ('sales', 'new_sale') %}active{% endif %}" href="{{ url_for('sales') }}" {% if request.endpoint in ('sales', 'new_sale') %}aria-current="page"{% endif %}>
+                <a class="nav-item {% if request.endpoint in ('sales', 'new_sale') %}active{% endif %}" href="{{ url_for('sales') }}" {% if request.endpoint in ('sales', 'new_sale') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">↗</span>
                 <span>Sales</span>
             </a>
-            <a class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}" href="{{ url_for('recommendations') }}" {% if request.endpoint == 'recommendations' %}aria-current="page"{% endif %}>
+                <a class="nav-item {% if request.endpoint == 'new_stock_action' %}active{% endif %}" href="{{ url_for('new_stock_action') }}" {% if request.endpoint == 'new_stock_action' %}aria-current="page"{% endif %}>
+                <span class="nav-icon" aria-hidden="true">↘</span>
+                <span>Waste & corrections</span>
+            </a>
+            </div>
+            <div class="nav-group">
+                <div class="sidebar-section-label">INSIGHTS & REPORTS</div>
+                <a class="nav-item {% if request.endpoint == 'recommendations' %}active{% endif %}" href="{{ url_for('recommendations') }}" {% if request.endpoint == 'recommendations' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">◎</span>
                 <span>Restock advice</span>
             </a>
-            <a class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>
-                <span class="nav-icon" aria-hidden="true">⚙</span>
-                <span>Settings</span>
-            </a>
-            <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
+                <a class="nav-item {% if request.endpoint == 'movements' %}active{% endif %}" href="{{ url_for('movements') }}" {% if request.endpoint == 'movements' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">⇄</span>
                 <span>Movements</span>
             </a>
-            <a class="nav-item {% if request.endpoint in ('reports', 'export_report') %}active{% endif %}" href="{{ url_for('reports') }}" {% if request.endpoint in ('reports', 'export_report') %}aria-current="page"{% endif %}>
+                <a class="nav-item {% if request.endpoint in ('reports', 'export_report') %}active{% endif %}" href="{{ url_for('reports') }}" {% if request.endpoint in ('reports', 'export_report') %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▥</span>
                 <span>Reports</span>
             </a>
+            </div>
+            <div class="nav-group">
+                <div class="sidebar-section-label">WORKSPACE</div>
+                <a class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}" href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>
+                <span class="nav-icon" aria-hidden="true">⚙</span>
+                <span>Settings</span>
+            </a>
+            </div>
         </nav>
 
         <div class="sidebar-bottom">
