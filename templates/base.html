@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='12') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='13') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -32,8 +32,8 @@
             </span>
         </a>
 
-        <div class="sidebar-section-label">WORKSPACE</div>
-        <nav class="sidebar-nav">
+        <div class="sidebar-section-label">OPERATIONS</div>
+        <nav class="sidebar-nav" aria-label="Main sections">
             <a class="nav-item {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}aria-current="page"{% endif %}>
                 <span class="nav-icon" aria-hidden="true">▦</span>
                 <span>Dashboard</span>
@@ -73,6 +73,7 @@
         </nav>
 
         <div class="sidebar-spacer"></div>
+        <a class="sidebar-help-link" href="{{ url_for('reports') }}">↗ &nbsp; Review inventory reports</a>
         <div class="workspace-card">
             <span class="workspace-indicator" aria-hidden="true"></span>
             <div>
@@ -86,6 +87,7 @@
     <div class="main-column">
         <header class="topbar">
             <div class="topbar-context">
+                <a class="mobile-brand" href="{{ url_for('index') }}">W <span>WarungWise</span></a>
                 <span class="topbar-eyebrow">INVENTORY MANAGEMENT</span>
                 <span class="topbar-title">Your shop, in control.</span>
             </div>
