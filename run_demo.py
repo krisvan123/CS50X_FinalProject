@@ -26,7 +26,7 @@ def prepare_demo_database() -> tuple[str, int]:
 
     # Inspect without writing. Do not call the seed function on a populated DB,
     # because a user may have modified the sample records while exploring.
-    with sqlite3.connect(f"file:{database_path.as_posix()}?mode=ro", uri=True) as connection:
+    with sqlite3.connect(f"{database_path.as_uri()}?mode=ro", uri=True) as connection:
         integrity = connection.execute("PRAGMA integrity_check").fetchone()
         if integrity is None or integrity[0] != "ok":
             raise RuntimeError("The existing demo database failed the SQLite integrity check.")
