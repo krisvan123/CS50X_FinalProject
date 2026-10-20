@@ -39,7 +39,7 @@ The Reports page supports date-filtered sales and movement analysis, a daily gro
 - `seed_demo.py` creates an isolated, fictional demo dataset for Phase 13; it refuses to mix demo records into an unrelated populated database.
 - `requirements.txt` lists the Python package dependency.
 - `templates/` contains the shared layout and pages for dashboard, products, batches, sales, stock actions, movement ledger, recommendations, reports, settings, setup, and errors.
-- `static/css/styles.css` retains shared component styles; `static/css/workspace.css` layers the redesigned typography, navigation, dashboard, cards, form and table treatment, and responsive layout. Both files are mirrored under `public/static/css/` for the optional Vercel preview. `static/js/app.js` adds accessible presentation effects and the live sale summary.
+- `static/css/styles.css` retains shared component styles and the original rotating decorative orbit; `static/css/workspace.css` layers the redesigned typography, navigation, animated sidebar orbits, dashboard, cards, form and table treatment, and responsive layout. Both files are mirrored under `public/static/css/` for the optional Vercel preview. `static/js/app.js` adds accessible presentation effects and the live sale summary.
 - `tests/test_app.py` contains the unittest suite. Tests use temporary databases and do not touch the operator’s local database.
 - `tests/test_seed_demo.py` checks demo seeding, rerun safety, ledger consistency, and page rendering using temporary databases.
 - `DESIGN.md` explains the technical architecture, database invariants, transaction flows, and design trade-offs.
@@ -55,7 +55,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python init_db.py
+python init_db.py  # only on the first installation, if the database does not exist
 python app.py
 ```
 
@@ -63,24 +63,25 @@ Use an installed Python version supported by Flask 3.x; if Python 3.12 is unavai
 
 The initializer does not add synthetic data. For a clean manual walkthrough, create products and transactions through the interface. For the planned Phase 13 presentation, use the isolated demo dataset below; it includes realistic inventory scenarios without touching the default local database.
 
-### Optional demo dataset (recommended for Phase 13)
+### Optional fictional demo dataset (one-command launch)
 
-Run from the repository root in Windows PowerShell:
+The regular command `python app.py` opens the real local workspace database (`instance/warungwise.db`). **It deliberately does not create fictional records.** To explore WarungWise with ready-made sample products, batches, sales, expiring stock, and stock adjustments, stop any running Flask server and run from the repository root:
 
 ```powershell
-python seed_demo.py
-$env:WARUNGWISE_DATABASE = (Resolve-Path .\instance\warungwise-demo.db).Path
-python app.py
+python run_demo.py
 ```
 
-The script prepares a separate `instance/warungwise-demo.db` with fictional products, batches, sales, a disposal, and a stock-count correction. The `WARUNGWISE_DATABASE` setting directs the app to that database for this PowerShell session. Remove it to return to the normal local database:
+Open `http://127.0.0.1:5000`. The header identifies **Local demo · sample data**, and the records can be edited for testing. `run_demo.py` creates/initializes a separate `instance/warungwise-demo.db` if needed, or reuses an existing populated demo database **without resetting edits**. If that database is corrupt or partially populated, the launcher refuses to overwrite it. It never seeds or deletes records in the primary database.
+
+Press **Ctrl+C** to stop the demo. Return to regular inventory by running `python app.py` in a terminal without `WARUNGWISE_DATABASE` set. If you previously set that environment variable manually in PowerShell, clear it first:
 
 ```powershell
 Remove-Item Env:WARUNGWISE_DATABASE -ErrorAction SilentlyContinue
+Remove-Item Env:WARUNGWISE_DEMO_SAMPLE -ErrorAction SilentlyContinue
 python app.py
 ```
 
-The seed command refuses to mix demo data into an unrelated non-empty database and does not delete records. If the complete dataset is already present, rerunning the command is a safe no-op. Demo records are synthetic and must not be represented as actual shop transactions.
+For manual scripting, `python seed_demo.py` remains available and refuses to mix fictional records into an unrelated populated database. All sample records are fictional, not actual shop transactions. SQLite databases in `instance/` are excluded from Git; pulling new UI code does not download, replace, or reset your local records.
 
 **Data safety:** `python init_db.py` refuses to overwrite an existing database. It creates `instance/warungwise.db` only for a new installation. Back up that file before database maintenance. The database, journals, and local instance folder are excluded from Git.
 
