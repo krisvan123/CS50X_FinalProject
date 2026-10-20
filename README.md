@@ -26,7 +26,7 @@ Backdated sales are checked against the movement history of each candidate batch
 The **Waste & corrections** workflow records disposal of damaged, expired, or otherwise unsellable stock, as well as inbound/outbound physical-count corrections against an existing batch. Every action requires a reason and creates an immutable movement record. Disposal value is computed from the disposed quantity and the batch’s stored unit cost; an expiry alert by itself is not treated as a realized loss.
 
 ### Dashboard, recommendations, and reports
-The dashboard summarizes saved records, low-stock products, near-expiry batches, expired batches, sales, and recent movements. Rule-based restock recommendations use recent observed sales, lead time, safety stock, and current sellable inventory. They are estimates, not purchase orders or guaranteed forecasts.
+The dashboard summarizes saved records, low-stock products, near-expiry batches, expired batches, sales, and recent movements. Its stock-coverage ring displays the share of active products currently above their minimum sellable-stock threshold, computed from saved inventory data rather than a decorative health score. The home screen also provides direct links for stock receipt, sales, and reporting. Rule-based restock recommendations use recent observed sales, lead time, safety stock, and current sellable inventory. They are estimates, not purchase orders or guaranteed forecasts.
 
 The Reports page supports date-filtered sales and movement analysis, a daily gross-revenue trend, top products, a current stock snapshot, and CSV exports. It reports gross revenue separately from recorded disposal cost and does not claim either metric is net profit. Inventory snapshots show current balances; the app does not reconstruct historical stock snapshots. Workspace settings make the expiry-warning window configurable from 0 to 365 days.
 
@@ -39,7 +39,7 @@ The Reports page supports date-filtered sales and movement analysis, a daily gro
 - `seed_demo.py` creates an isolated, fictional demo dataset for Phase 13; it refuses to mix demo records into an unrelated populated database.
 - `requirements.txt` lists the Python package dependency.
 - `templates/` contains the shared layout and pages for dashboard, products, batches, sales, stock actions, movement ledger, recommendations, reports, settings, setup, and errors.
-- `static/css/styles.css` styles the responsive interface and shared components. `static/js/app.js` adds accessible presentation effects and the live sale summary.
+- `static/css/styles.css` retains shared component styles; `static/css/workspace.css` layers the redesigned typography, navigation, dashboard, cards, form and table treatment, and responsive layout. Both files are mirrored under `public/static/css/` for the optional Vercel preview. `static/js/app.js` adds accessible presentation effects and the live sale summary.
 - `tests/test_app.py` contains the unittest suite. Tests use temporary databases and do not touch the operator’s local database.
 - `tests/test_seed_demo.py` checks demo seeding, rerun safety, ledger consistency, and page rendering using temporary databases.
 - `DESIGN.md` explains the technical architecture, database invariants, transaction flows, and design trade-offs.
