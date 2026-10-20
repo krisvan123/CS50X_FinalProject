@@ -55,6 +55,7 @@ def main() -> int:
     demo_path = DEFAULT_DATABASE_PATH.resolve()
     os.environ["WARUNGWISE_DATABASE"] = str(demo_path)
     os.environ["WARUNGWISE_DEMO_READ_ONLY"] = "false"
+    os.environ["WARUNGWISE_DEMO_SAMPLE"] = "true"
 
     from app import create_app
 
