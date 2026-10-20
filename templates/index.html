@@ -2,20 +2,68 @@
 {# AI-use disclosure: ChatGPT assisted with drafting/refining this page template; review and understand it before submission. #}
 
 {% block content %}
-<section class="page-heading dashboard-heading">
-    <div>
-        <p class="eyebrow">OVERVIEW</p>
-        <h1>Inventory overview</h1>
-        <p class="page-subtitle">A clear view of your stock position, expiry risks, and today's recorded sales.</p>
-    </div>
-    <div class="dashboard-actions">
-        <a class="button button-primary" href="{{ url_for('new_product') }}">+ Add product</a>
-        <a class="button button-secondary" href="{{ url_for('new_sale') }}">Record a sale</a>
-        <div class="date-chip">
-        <span class="date-chip-label">BUSINESS DATE</span>
-        <strong>{{ stats.business_date }}</strong>
+{# AI-use disclosure: ChatGPT assisted with this dashboard layout and the derived coverage visualization. #}
+{% set active_count = stats.active_products|int %}
+{% set low_count = stats.low_stock_products|int %}
+{% set above_count = active_count - low_count %}
+{% if above_count < 0 %}{% set above_count = 0 %}{% endif %}
+{% set coverage = ((above_count * 100 / active_count)|round|int) if active_count > 0 else 0 %}
+
+<section class="ww-hero" aria-labelledby="ww-hero-title">
+    <div class="ww-hero-copy">
+        <div class="ww-hero-kicker"><span aria-hidden="true">✳</span> Inventory overview</div>
+        <h1 id="ww-hero-title">Make every shelf <span>count.</span></h1>
+        <p>Everything your warung needs in one clear view. Track stock, catch expiry risks, and keep daily operations moving.</p>
+        <div class="ww-hero-actions">
+            <a class="ww-hero-primary" href="{{ url_for('new_batch') }}">Receive stock <span aria-hidden="true">↗</span></a>
+            <a class="ww-hero-secondary" href="{{ url_for('new_sale') }}">Record a sale <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="ww-hero-footer">
+            <span class="ww-hero-dot" aria-hidden="true"></span>
+            <span>Based on recorded inventory</span>
+            <span class="ww-hero-divider" aria-hidden="true"></span>
+            <span>Business date: {{ stats.business_date }}</span>
         </div>
     </div>
+    <div class="ww-hero-panel">
+        <div class="ww-panel-topline">
+            <span>STOCK COVERAGE</span>
+            <span class="ww-panel-current"><span aria-hidden="true">●</span> CURRENT</span>
+        </div>
+        <div class="ww-coverage-content">
+            <div class="ww-coverage-ring" style="--coverage-percent: {{ coverage }}%;">
+                <div class="ww-coverage-core"><strong>{{ coverage }}<small>%</small></strong><span>above minimum</span></div>
+            </div>
+            <div class="ww-coverage-detail">
+                <strong>{{ above_count }} <span>/ {{ active_count }}</span></strong>
+                <p>active products above their minimum stock threshold</p>
+                {% if active_count == 0 %}<small>Add products to start measuring coverage.</small>{% else %}<small>Calculated from the current database.</small>{% endif %}
+            </div>
+        </div>
+        <div class="ww-panel-divider"></div>
+        <div class="ww-panel-alerts">
+            <div><span>Below threshold</span><strong>{{ stats.low_stock_products }}</strong></div>
+            <div><span>Expiring soon</span><strong>{{ stats.near_expiry_batches }}</strong></div>
+        </div>
+    </div>
+</section>
+
+<section class="ww-shortcuts" aria-label="Quick actions">
+    <a class="ww-shortcut" href="{{ url_for('new_product') }}">
+        <span class="ww-shortcut-icon ww-shortcut-green" aria-hidden="true">＋</span>
+        <span><strong>Add a product</strong><small>Expand your catalogue</small></span>
+        <span class="ww-shortcut-arrow" aria-hidden="true">↗</span>
+    </a>
+    <a class="ww-shortcut" href="{{ url_for('batches') }}">
+        <span class="ww-shortcut-icon ww-shortcut-yellow" aria-hidden="true">◷</span>
+        <span><strong>Review expiry</strong><small>Check your stock batches</small></span>
+        <span class="ww-shortcut-arrow" aria-hidden="true">↗</span>
+    </a>
+    <a class="ww-shortcut" href="{{ url_for('reports') }}">
+        <span class="ww-shortcut-icon ww-shortcut-blue" aria-hidden="true">▤</span>
+        <span><strong>View reports</strong><small>Explore recorded activity</small></span>
+        <span class="ww-shortcut-arrow" aria-hidden="true">↗</span>
+    </a>
 </section>
 
 <section class="welcome-strip" aria-label="Database status">
