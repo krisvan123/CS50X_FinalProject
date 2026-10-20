@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='14') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css', v='2') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css', v='3') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -93,8 +93,8 @@
                 <span class="workspace-indicator" aria-hidden="true"></span>
                 <div class="workspace-copy">
                     <span class="workspace-overline">CURRENT WORKSPACE</span>
-                    <strong>{% if config.get('DEMO_READ_ONLY', False) %}Demo workspace{% else %}Local workspace{% endif %}</strong>
-                    <small>{% if config.get('DEMO_READ_ONLY', False) %}Read-only sample data{% else %}Single-shop edition{% endif %}</small>
+                    <strong>{% if config.get('DEMO_READ_ONLY', False) %}Demo workspace{% elif config.get('DEMO_SAMPLE_DATA', False) %}Sample workspace{% else %}Local workspace{% endif %}</strong>
+                    <small>{% if config.get('DEMO_READ_ONLY', False) %}Read-only sample data{% elif config.get('DEMO_SAMPLE_DATA', False) %}Editable fictional records{% else %}Single-shop edition{% endif %}</small>
                 </div>
             </div>
             <div class="sidebar-footnote">WarungWise · CS50x Final Project</div>
@@ -108,7 +108,7 @@
                 <span class="topbar-title">Your inventory command center</span>
             </div>
             <div class="topbar-meta">
-                <span class="environment-pill"><span class="local-status-dot" aria-hidden="true"></span>{% if config.get('DEMO_READ_ONLY', False) %}Read-only demo{% else %}Local workspace{% endif %}</span>
+                <span class="environment-pill"><span class="local-status-dot" aria-hidden="true"></span>{% if config.get('DEMO_READ_ONLY', False) %}Read-only demo{% elif config.get('DEMO_SAMPLE_DATA', False) %}Local demo · sample data{% else %}Local workspace{% endif %}</span>
                 {% if not config.get('DEMO_READ_ONLY', False) %}
                 <a class="topbar-quick-action" href="{{ url_for('new_sale') }}">+ New sale <span aria-hidden="true">↗</span></a>
                 {% endif %}
