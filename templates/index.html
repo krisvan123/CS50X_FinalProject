@@ -66,13 +66,14 @@
     </a>
 </section>
 
-<section class="welcome-strip" aria-label="Database status">
-    <div class="welcome-icon" aria-hidden="true">✓</div>
+{% set attention_count = stats.low_stock_products + stats.near_expiry_batches + stats.expired_batches %}
+<section class="welcome-strip {% if attention_count > 0 %}needs-review{% endif %}" aria-label="Inventory notifications">
+    <div class="welcome-icon" aria-hidden="true">{% if attention_count > 0 %}!{% else %}✓{% endif %}</div>
     <div>
-        <strong>Your local database is connected</strong>
-        <p>Dashboard figures are calculated from saved records. Use the watchlists below to spot stock shortages and expiry risks before reviewing the latest inventory activity.</p>
+        <strong>{% if active_count == 0 %}Your inventory workspace is ready{% elif attention_count > 0 %}{{ attention_count }} stock signals to review{% else %}No stock warnings in the current snapshot{% endif %}</strong>
+        <p>{% if active_count == 0 %}Add your first product, then receive stock to begin tracking inventory activity.{% else %}{{ stats.low_stock_products }} low-stock products · {{ stats.near_expiry_batches }} near-expiry batches · {{ stats.expired_batches }} expired batches. Review the lists below for details.{% endif %}</p>
     </div>
-    <span class="status-pill"><span aria-hidden="true"></span> Database ready</span>
+    <span class="status-pill"><span aria-hidden="true"></span> Saved records</span>
 </section>
 
 <section class="section-block" aria-labelledby="inventory-metrics-title">
