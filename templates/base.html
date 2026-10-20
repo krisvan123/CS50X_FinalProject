@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- AI-use disclosure: ChatGPT assisted with shared typography, navigation, and animation markup. -->
+<!-- AI-use disclosure: ChatGPT assisted with shared typography, navigation, workspace-footer layout, and animation markup. -->
 <html lang="id">
 <head>
     <meta charset="utf-8">
@@ -15,8 +15,8 @@
         crossorigin="anonymous">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800;900&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='13') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='14') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -72,16 +72,21 @@
             </a>
         </nav>
 
-        <div class="sidebar-spacer"></div>
-        <a class="sidebar-help-link" href="{{ url_for('reports') }}">↗ &nbsp; Review inventory reports</a>
-        <div class="workspace-card">
-            <span class="workspace-indicator" aria-hidden="true"></span>
-            <div>
-                <strong>{% if config.get('DEMO_READ_ONLY', False) %}Demo workspace{% else %}Local workspace{% endif %}</strong>
-                <small>{% if config.get('DEMO_READ_ONLY', False) %}Read-only sample data{% else %}Single-shop edition{% endif %}</small>
+        <div class="sidebar-bottom">
+            <a class="sidebar-help-link" href="{{ url_for('reports') }}">
+                <span aria-hidden="true">↗</span>
+                <span>Review inventory reports</span>
+            </a>
+            <div class="workspace-card" aria-label="Workspace status">
+                <span class="workspace-indicator" aria-hidden="true"></span>
+                <div class="workspace-copy">
+                    <span class="workspace-overline">CURRENT WORKSPACE</span>
+                    <strong>{% if config.get('DEMO_READ_ONLY', False) %}Demo workspace{% else %}Local workspace{% endif %}</strong>
+                    <small>{% if config.get('DEMO_READ_ONLY', False) %}Read-only sample data{% else %}Single-shop edition{% endif %}</small>
+                </div>
             </div>
+            <div class="sidebar-footnote">WarungWise · CS50x Final Project</div>
         </div>
-        <div class="sidebar-footnote">WarungWise · CS50x Final Project</div>
     </aside>
 
     <div class="main-column">
