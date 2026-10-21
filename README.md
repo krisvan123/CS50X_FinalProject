@@ -1,7 +1,7 @@
 # WarungWise
 **Smarter Stock. Less Waste. Better Decisions.**
 
-#### Video Demo: PENDING — replace this line with the public or unlisted video URL before CS50x submission.
+#### Video Demo: https://youtu.be/HF2imtIXL9w
 
 ## Description
 
@@ -135,6 +135,14 @@ The local development server is not intended for direct public-internet exposure
 
 ChatGPT assisted with planning, drafting, code refinement, testing, documentation, and interface styling in this project. AI-use disclosures have been added to relevant code areas, but the project author must review and understand the submitted implementation and ensure that comments accurately describe the assistance provided. The official [CS50x 2026 Final Project instructions](https://cs50.harvard.edu/x/project/) permit external AI tools for the final project while requiring their use to be cited in code comments.
 
-## Before submission
+## CS50x final submission
 
-Record a video of no more than three minutes and replace the pending Video Demo line at the top with its URL. The opening of the video must display the project title, the student's name, GitHub and edX usernames, city and country, and the recording date. Then demonstrate the main workflow, including product creation, batch receipt, sale, stock correction/disposal, reports, and CSV export. Complete the Phase 12 manual test/security gate before treating the project as ready to submit.
+The project video is available at [WarungWise Video Demo](https://youtu.be/HF2imtIXL9w). It presents the WarungWise interface and its inventory-management workflows. This repository includes the project source code, setup instructions, technical design decisions, and tests. Before submitting, the author should verify that the video and its embedding are accessible to course staff, review the academic-integrity disclosures, and complete any outstanding manual checks.
+
+After completing the video form in Step 1, submit the project code from the directory containing this README and the application files using:
+
+```bash
+submit50 cs50/problems/2026/x/project
+```
+
+Verify submission status in the CS50 gradebook.
