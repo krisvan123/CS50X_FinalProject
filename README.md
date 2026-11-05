@@ -3,8 +3,6 @@
 
 #### Video Demo: https://youtu.be/HF2imtIXL9w
 
-**Interview walkthrough:** [Panduan demo WarungWise (Bahasa Indonesia)](docs/INTERVIEW_DEMO.md). For an interactive presentation, run `python run_demo.py` locally. The public Vercel preview is read-only.
-
 ## Description
 
 WarungWise is a local-first inventory and expiry-management web application designed for small Indonesian neighborhood shops (warungs). It focuses on a practical operational problem: a shop needs to know not only how many units it has, but also which delivery batch those units came from, when that batch expires, how stock changed, and what its recent sales suggest about replenishment.
