@@ -58,7 +58,12 @@
     if (!prefersReducedMotion) {
         const numberFormat = new Intl.NumberFormat("id-ID");
         document.querySelectorAll(".metric-value, .recommendation-summary-card [data-testid], .report-summary-count").forEach(function (node) {
-            const target = Number((node.textContent || "").trim().replace(/[^0-9-]/g, ""));
+            const original = (node.textContent || "").trim();
+            // Only animate whole-number counts; preserve currency, labels, and decimal rates.
+            if (!/^\d+(?:\.\d{3})*$/.test(original)) {
+                return;
+            }
+            const target = Number(original.replace(/\./g, ""));
             if (!Number.isFinite(target) || target <= 0 || node.dataset.countAnimated === "true") {
                 return;
             }

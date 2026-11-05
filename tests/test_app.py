@@ -1674,5 +1674,43 @@ class WarungWiseAppTests(unittest.TestCase):
         self.assertEqual(self.client.get("/reports/export/unknown").status_code, 404)
 
 
+    def test_settings_is_accessible_from_header_and_links_to_related_views(self) -> None:
+        initialize_database(database_path=self.database_path)
+        dashboard = self.client.get("/")
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertIn(b'aria-label="Open workspace settings"', dashboard.data)
+        settings = self.client.get("/settings")
+        self.assertEqual(settings.status_code, 200)
+        self.assertIn(b"Expiry-warning window", settings.data)
+        self.assertIn(b"Stock batches", settings.data)
+        self.assertIn(b"Reports", settings.data)
+        self.assertIn(b"Save settings", settings.data)
+
+    def test_public_demo_settings_are_view_only(self) -> None:
+        initialize_database(database_path=self.database_path)
+        demo_app = create_app({
+            "TESTING": True,
+            "SECRET_KEY": "test-only-demo-secret",
+            "DATABASE": str(self.database_path),
+            "DEMO_READ_ONLY": True,
+        })
+        client = demo_app.test_client()
+        response = client.get("/settings")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"Public demo", response.data)
+        self.assertIn(b"view-only settings", response.data)
+        self.assertNotIn(b"Save settings", response.data)
+        self.assertIn(b"disabled", response.data)
+        response = client.post("/settings", data={"expiry_warning_days": "7"})
+        self.assertEqual(response.status_code, 403)
+        connection = sqlite3.connect(self.database_path)
+        try:
+            self.assertEqual(connection.execute(
+                "SELECT expiry_warning_days FROM app_settings WHERE id = 1"
+            ).fetchone()[0], 30)
+        finally:
+            connection.close()
+
+
 if __name__ == "__main__":
     unittest.main()

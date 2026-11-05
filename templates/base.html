@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- AI-use disclosure: ChatGPT assisted with shared typography, navigation, workspace-footer layout, and animation markup. -->
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v='14') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css', v='3') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/workspace.css', v='4') }}">
 </head>
 <body>
 <a class="skip-link" href="#main-content">Lewati ke konten utama</a>
@@ -108,6 +108,10 @@
                 <span class="topbar-title">Your inventory command center</span>
             </div>
             <div class="topbar-meta">
+                <a class="topbar-settings-link" href="{{ url_for('settings') }}" aria-label="Open workspace settings" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></svg>
+                    <span>Settings</span>
+                </a>
                 <span class="environment-pill"><span class="local-status-dot" aria-hidden="true"></span>{% if config.get('DEMO_READ_ONLY', False) %}Read-only demo{% elif config.get('DEMO_SAMPLE_DATA', False) %}Local demo · sample data{% else %}Local workspace{% endif %}</span>
                 {% if not config.get('DEMO_READ_ONLY', False) %}
                 <a class="topbar-quick-action" href="{{ url_for('new_sale') }}">+ New sale <span aria-hidden="true">↗</span></a>

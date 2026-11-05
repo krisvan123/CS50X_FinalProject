@@ -6,25 +6,29 @@
     <div>
         <p class="eyebrow">WORKSPACE / PREFERENCES</p>
         <h1>Workspace settings</h1>
-        <p class="page-subtitle">Adjust when stocked batches should appear in the near-expiry watchlists across WarungWise.</p>
+        <p class="page-subtitle">Set how early WarungWise flags batches approaching their expiry date. Changes are saved in your local workspace database.</p>
     </div>
     <div class="date-chip"><span class="date-chip-label">CURRENT DATE</span><strong>{{ today }}</strong></div>
 </section>
 <section class="content-card settings-panel">
     <div class="section-heading">
-        <div><h2>Expiry-warning window</h2><p>Applies to the dashboard, stock batch statuses, and inventory snapshot reports.</p></div>
+        <div><h2>Expiry-warning window</h2><p>This warning window applies to Dashboard, Stock batches, and inventory snapshot reports.</p></div>
         <span class="card-symbol" aria-hidden="true">◷</span>
     </div>
+    {% if config.get('DEMO_READ_ONLY', False) %}
+    <div class="settings-readonly-message" role="status"><strong>Public demo · view-only settings</strong><p>This is a read-only preview. Run <code>python run_demo.py</code> locally to change settings and show the result.</p></div>
+    {% endif %}
     <form method="post" action="{{ url_for('settings') }}" class="settings-form" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-field">
             <label for="expiry_warning_days">Days before expiry</label>
-            <input id="expiry_warning_days" name="expiry_warning_days" type="number" min="0" max="365" step="1" required value="{{ expiry_warning_days }}" {% if error %}aria-invalid="true" aria-describedby="expiry-days-error"{% endif %}>
+            <input id="expiry_warning_days" name="expiry_warning_days" type="number" min="0" max="365" step="1" required value="{{ expiry_warning_days }}" {% if error %}aria-invalid="true" aria-describedby="expiry-days-error"{% endif %} {% if config.get('DEMO_READ_ONLY', False) %}disabled{% endif %}>
             {% if error %}<p class="field-error" id="expiry-days-error">{{ error }}</p>{% endif %}
             <p class="field-hint">Allowed: 0–365 days. Set 0 to show batches expiring today (expired stock remains separately flagged).</p>
         </div>
         <div class="settings-current"><span>Currently saved</span><strong>{{ current_days }} day(s)</strong></div>
-        <div class="form-actions"><button class="button button-primary" type="submit">Save settings <span aria-hidden="true">→</span></button></div>
+        {% if not config.get('DEMO_READ_ONLY', False) %}<div class="form-actions"><button class="button button-primary" type="submit">Save settings <span aria-hidden="true">→</span></button></div>{% endif %}
     </form>
 </section>
+<section class="content-card settings-guide" aria-labelledby="settings-related-title"><div class="section-heading"><div><h2 id="settings-related-title">Check where this setting takes effect</h2><p>After saving, review the warning counts and batch status in these views.</p></div></div><div class="settings-related-links"><a class="button button-secondary" href="{{ url_for('index') }}">Dashboard ↗</a><a class="button button-secondary" href="{{ url_for('batches') }}">Stock batches ↗</a><a class="button button-secondary" href="{{ url_for('reports') }}">Reports ↗</a></div><p class="settings-scope-note">WarungWise is a single-operator, local-first project. Accounts, cloud sync, and role permissions are not included in the public preview.</p></section>
 {% endblock %}

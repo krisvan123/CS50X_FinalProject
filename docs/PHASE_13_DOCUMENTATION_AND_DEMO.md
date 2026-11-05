@@ -1,6 +1,6 @@
 # Phase 13 — Documentation and Demo Preparation
 
-**Status:** Demo assets prepared in advance; Phase 13 is not complete. It remains gated by the Phase 12 manual browser/security review and recording the actual demo video.
+**Status:** Demo dataset and recorded [video walkthrough](https://youtu.be/HF2imtIXL9w) are available. Phase 13 remains open until the Phase 12 manual browser/security review and local demo smoke checks are recorded.
 
 ## 1. Isolated demo database
 
@@ -66,5 +66,5 @@ On Vercel, `wsgi.py` uses the writable temporary path `/tmp/warungwise-demo.db`,
 - [ ] Verify all demo routes at desktop and narrow/mobile widths.
 - [ ] Rehearse the primary workflow against the demo database, including FEFO and CSV exports.
 - [ ] Confirm the README setup and demo commands work on the submission machine.
-- [ ] Record a video of no more than three minutes and replace the pending demo URL in the README.
+- [x] Record a demo video and add its [URL](https://youtu.be/HF2imtIXL9w) to the README. Verify accessibility before submission.
 - [ ] Verify the final Git working tree has no local database, secrets, or other private files.
